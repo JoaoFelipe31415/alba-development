@@ -5,7 +5,7 @@ import 'package:alba/ui/design_system/widgets/row_line.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:sign_in_button/sign_in_button.dart';
-import 'package:alba/ui/registe/register_screen.dart';
+import 'package:alba/ui/register/register_screen.dart';
 const double gap = 12.5;
 
 class LoginScreen extends StatelessWidget {
