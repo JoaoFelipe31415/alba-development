@@ -1,6 +1,13 @@
 class CredentialsLoginDto {
-  final String email;
-  final String password;
+   String email;
+   String password;
 
-  CredentialsLoginDto({required this.email, required this.password});
+  CredentialsLoginDto({ this.email = '',  this.password = ''});
+
+  void setEmail(String value) {
+    email = value;
+  }
+  void setPassword(String value) {
+    password = value;
+  }
 }
