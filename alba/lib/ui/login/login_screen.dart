@@ -6,7 +6,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:sign_in_button/sign_in_button.dart';
-
+import 'package:alba/ui/register/register_screen.dart';
 const double gap = 12.5;
 const double radiusEnterButton = Spaces.m + 2;
 
@@ -117,6 +117,8 @@ class LoginScreen extends StatelessWidget {
                               ),
                               recognizer: TapGestureRecognizer()
                                 ..onTap = () {
+                                  Navigator.push(context, 
+                                  MaterialPageRoute(builder: (context) => RegisterScreen()));
                                   //TODO: Implementar cadastro
                                 },
                             ),
