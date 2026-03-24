@@ -1,19 +1,17 @@
-import 'package:alba/domain/dto/credentials_login_dto.dart';
+import 'package:alba/domain/dto/credentials_register_dto.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-class LoginViewmodel {
+class RegisterViewmodel {
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  Future<bool> login(CredentialsLoginDto dto) async {
+  void register(CredentialsRegisterDto dto) async {
     try {
-      await _auth.signInWithEmailAndPassword(
+      var result = await _auth.createUserWithEmailAndPassword(
         email: dto.email,
         password: dto.password,
       );
-      return true;
     } catch (e) {
       print(e);
-      return false;
     }
   }
 }
