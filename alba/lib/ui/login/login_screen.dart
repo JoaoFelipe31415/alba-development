@@ -4,9 +4,11 @@ import 'package:alba/ui/utils/images.dart';
 import 'package:alba/ui/design_system/widgets/row_line.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/svg.dart';
 import 'package:sign_in_button/sign_in_button.dart';
 import 'package:alba/ui/register/register_screen.dart';
 const double gap = 12.5;
+const double radiusEnterButton = Spaces.m + 2;
 
 class LoginScreen extends StatelessWidget {
   const LoginScreen({super.key});
@@ -15,16 +17,36 @@ class LoginScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: Spaces.xxl),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: .max,
-              mainAxisAlignment: .center,
-              children: [
-                Image.asset(ImagesConstants.logoNome, height: 300),
-                Text('Entre para continuar sua jornada!'),
-                Form(
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: .max,
+            mainAxisAlignment: .center,
+            children: [
+              Stack(
+                children: [
+                  Center(
+                    child: SvgPicture.asset(
+                      ImagesConstants.logoNome,
+                      width: 128,
+                      height: 351,
+                    ),
+                  ),
+                  Positioned(
+                    left: 26,
+                    bottom: 70,
+                    child: Text(
+                      'Entre para continuar sua jornada!',
+                      style: TextStyle(
+                        fontSize: Spaces.xl,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: Spaces.l),
+                child: Form(
                   child: Column(
                     spacing: 10,
                     crossAxisAlignment: CrossAxisAlignment.center,
@@ -48,9 +70,21 @@ class LoginScreen extends StatelessWidget {
                       ElevatedButton(
                         onPressed: () {},
                         style: ElevatedButton.styleFrom(
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(
+                              radiusEnterButton,
+                            ),
+                          ),
+                          backgroundColor: Colors.blue,
                           minimumSize: const Size(double.infinity, 50),
                         ),
-                        child: Text('Entrar'),
+                        child: Text(
+                          'Entrar',
+                          style: TextStyle(
+                            fontSize: Spaces.xxl,
+                            color: Colors.white,
+                          ),
+                        ),
                       ),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -94,8 +128,8 @@ class LoginScreen extends StatelessWidget {
                     ],
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
