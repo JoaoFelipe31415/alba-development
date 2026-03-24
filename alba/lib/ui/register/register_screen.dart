@@ -32,7 +32,7 @@ class RegisterScreen extends StatelessWidget {
                     Navigator.pop(context);
                   },
                   icon: Image.asset(
-                    ImagesConstants.retornopage,
+                    ImagesConstants.retornoPage,
                     width: Spaces.m,
                     height: Spaces.xl,
                   ),
