@@ -8,15 +8,13 @@ class LoginViewmodel extends ChangeNotifier {
 
   LoginViewmodel(this._authRepository);
 
-  bool isLoggedIn = false;
+  bool get isLoggedIn => _authRepository.isLoggedIn;
 
   Future<void> login(CredentialsLoginDto dto) async {
     try {
       await _authRepository.login(dto);
-      isLoggedIn = _authRepository.isLoggedIn;
       notifyListeners();
     } catch (e) {
-      print(e);
       notifyListeners();
     }
   }
@@ -24,7 +22,6 @@ class LoginViewmodel extends ChangeNotifier {
   Future<void> loginWithGoogle() async {
     try {
       await _authRepository.loginWithGoogle();
-      isLoggedIn = _authRepository.isLoggedIn;
       notifyListeners();
       if (isLoggedIn) {
         await _authRepository.saveUserOnFirestore(
@@ -37,7 +34,6 @@ class LoginViewmodel extends ChangeNotifier {
         );
       }
     } catch (e) {
-      print(e);
       notifyListeners();
     }
   }
@@ -45,7 +41,6 @@ class LoginViewmodel extends ChangeNotifier {
   Future<void> logout() async {
     try {
       await _authRepository.logout();
-      isLoggedIn = _authRepository.isLoggedIn;
     } catch (e) {
       print(e);
     }

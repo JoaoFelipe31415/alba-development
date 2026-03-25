@@ -6,6 +6,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 
 class AuthRepository {
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  final GoogleSignIn _googleSignIn = GoogleSignIn();
 
   bool get isLoggedIn => _auth.currentUser != null;
   User? get currentUser => _auth.currentUser;
@@ -34,7 +35,7 @@ class AuthRepository {
 
   Future<void> loginWithGoogle() async {
     try {
-      final googleUser = await GoogleSignIn().signIn();
+      final googleUser = await _googleSignIn.signIn();
       if (googleUser == null) return;
 
       final googleAuth = await googleUser.authentication;
@@ -44,7 +45,6 @@ class AuthRepository {
       );
 
       await _auth.signInWithCredential(credential);
-      var teste = _auth.currentUser;
     } catch (e) {
       print(e);
     }
@@ -52,6 +52,7 @@ class AuthRepository {
 
   Future<void> logout() async {
     try {
+      await _googleSignIn.signOut();
       await _auth.signOut();
     } catch (e) {
       print(e);
