@@ -7,9 +7,11 @@ environment:
   sdk: ^3.11.1
 
 dependencies:
+  auto_injector: ^2.1.1
   cloud_firestore: ^6.2.0
   firebase_auth: ^6.3.0
   firebase_core: ^4.6.0
+  google_sign_in: ^6.2.1
   flutter:
     sdk: flutter
   flutter_localizations:

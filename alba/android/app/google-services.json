@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "371706293630-f1oa3cc1pcg21kuhifam1gfuj4sma238.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.alba.app",
+            "certificate_hash": "f087a847a63b8476cdb5d8692c78fb08671fde8c"
+          }
+        },
+        {
           "client_id": "371706293630-5rcqu175btn1i58b6d4jii4eacnl8tpo.apps.googleusercontent.com",
           "client_type": 3
         }

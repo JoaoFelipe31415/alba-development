@@ -1,3 +1,5 @@
+import 'package:alba/config/dependencies.dart';
+import 'package:alba/data/repositories/auth_repository.dart';
 import 'package:alba/domain/dto/credentials_register_dto.dart';
 import 'package:alba/domain/validators/register_validator.dart';
 import 'package:alba/ui/design_system/widgets/input_register.dart';
@@ -21,7 +23,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     const Color primaryColor = Color(0xFF1D4ED8);
     const Color buttonGreen = Color(0xFF84F41E);
 
-    final viewmodel = RegisterViewmodel();
+    final viewmodel = RegisterViewmodel(injector.get<AuthRepository>());
     final validator = RegisterValidator();
     final dto = CredentialsRegisterDto();
 

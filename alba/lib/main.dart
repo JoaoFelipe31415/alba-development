@@ -1,3 +1,4 @@
+import 'package:alba/config/dependencies.dart';
 import 'package:alba/core/locales.dart';
 import 'package:alba/ui/login/login_screen.dart';
 import 'package:flutter/material.dart';
@@ -8,6 +9,7 @@ import 'firebase_options.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  setupInjector();
   runApp(const MainApp());
 }
 
