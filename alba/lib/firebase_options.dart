@@ -70,8 +70,8 @@ class DefaultFirebaseOptions {
     messagingSenderId: '371706293630',
     projectId: 'alba-1e168',
     storageBucket: 'alba-1e168.firebasestorage.app',
-    iosClientId:
-        '371706293630-ttrnbds8iv5v20e0cohi57cfvvrhc7nn.apps.googleusercontent.com',
+    iosClientId: '371706293630-ttrnbds8iv5v20e0cohi57cfvvrhc7nn.apps.googleusercontent.com',
     iosBundleId: 'com.example.alba',
   );
+
 }

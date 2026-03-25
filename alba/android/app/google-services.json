@@ -14,41 +14,21 @@
       },
       "oauth_client": [
         {
-          "client_id": "371706293630-5rcqu175btn1i58b6d4jii4eacnl8tpo.apps.googleusercontent.com",
-          "client_type": 3
-        }
-      ],
-      "api_key": [
+          "client_id": "371706293630-f1oa3cc1pcg21kuhifam1gfuj4sma238.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.alba.app",
+            "certificate_hash": "f087a847a63b8476cdb5d8692c78fb08671fde8c"
+          }
+        },
         {
-          "current_key": "AIzaSyB84M2rPstXZhKulq5qdEyPBjnQUZDkkao"
-        }
-      ],
-      "services": {
-        "appinvite_service": {
-          "other_platform_oauth_client": [
-            {
-              "client_id": "371706293630-5rcqu175btn1i58b6d4jii4eacnl8tpo.apps.googleusercontent.com",
-              "client_type": 3
-            },
-            {
-              "client_id": "371706293630-ttrnbds8iv5v20e0cohi57cfvvrhc7nn.apps.googleusercontent.com",
-              "client_type": 2,
-              "ios_info": {
-                "bundle_id": "com.example.alba"
-              }
-            }
-          ]
-        }
-      }
-    },
-    {
-      "client_info": {
-        "mobilesdk_app_id": "1:371706293630:android:4226b42c831427bb3a972f",
-        "android_client_info": {
-          "package_name": "com.example.alba"
-        }
-      },
-      "oauth_client": [
+          "client_id": "371706293630-mlhqvrrpsiv3ibj23eh0dv2shsvob30q.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.alba.app",
+            "certificate_hash": "2eb2c8d4282bc665c8abe7abba517a0da9be4e7f"
+          }
+        },
         {
           "client_id": "371706293630-5rcqu175btn1i58b6d4jii4eacnl8tpo.apps.googleusercontent.com",
           "client_type": 3
