@@ -44,6 +44,7 @@ class AuthRepository {
       );
 
       await _auth.signInWithCredential(credential);
+      var teste = _auth.currentUser;
     } catch (e) {
       print(e);
     }
