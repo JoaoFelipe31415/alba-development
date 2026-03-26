@@ -10,6 +10,7 @@ class InputLogin extends StatefulWidget {
     this.validator,
     this.controller,
     this.onChanged,
+    this.obscureText = false,
   });
   final String labelText;
   final Widget? prefixIcon;
@@ -17,6 +18,7 @@ class InputLogin extends StatefulWidget {
   final String? Function(String?)? validator;
   final TextEditingController? controller;
   final Function(String)? onChanged;
+  bool obscureText;
 
   @override
   State<InputLogin> createState() => _InputLoginState();
@@ -29,17 +31,19 @@ class _InputLoginState extends State<InputLogin> {
       validator: widget.validator,
       controller: widget.controller,
       onChanged: widget.onChanged,
-      obscureText: widget.isPassword,
+      obscureText: widget.obscureText,
       decoration: InputDecoration(
-        suffixIcon: IconButton(
-          icon: widget.isPassword
-              ? Icon(Icons.visibility)
-              : Icon(Icons.visibility_off),
-          onPressed: () {
-            widget.isPassword = !widget.isPassword;
-            setState(() {});
-          },
-        ),
+        suffixIcon: widget.isPassword
+            ? IconButton(
+                icon: widget.obscureText
+                    ? Icon(Icons.visibility_off)
+                    : Icon(Icons.visibility),
+                onPressed: () {
+                  widget.obscureText = !widget.obscureText;
+                  setState(() {});
+                },
+              )
+            : null,
         hintText: widget.labelText,
         prefixIcon: widget.prefixIcon,
         border: OutlineInputBorder(

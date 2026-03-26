@@ -11,6 +11,7 @@ class InputRegister extends StatefulWidget {
     required this.controller,
     this.validator,
     this.onChanged,
+    this.isPassword = false,
   });
   final String title;
   final String labelText;
@@ -19,6 +20,7 @@ class InputRegister extends StatefulWidget {
   final Function(String)? onChanged;
   final TextEditingController controller;
   final String? Function(String?)? validator;
+  final bool isPassword;
 
   //TODO: Organizar melhor esses estados
 
@@ -47,18 +49,21 @@ class _InputRegisterState extends State<InputRegister> {
           controller: widget.controller,
           obscureText: widget.obscureText,
           decoration: InputDecoration(
-            suffixIcon: IconButton(
-              icon: widget.obscureText
-                  ? Icon(Icons.visibility)
-                  : Icon(Icons.visibility_off),
-              onPressed: () {
-                widget.obscureText = !widget.obscureText;
-                setState(() {});
-              },
-            ),
+            suffixIcon: widget.isPassword
+                ? IconButton(
+                    icon: widget.obscureText
+                        ? Icon(Icons.visibility_off)
+                        : Icon(Icons.visibility),
+                    onPressed: () {
+                      widget.obscureText = !widget.obscureText;
+                      setState(() {});
+                    },
+                  )
+                : null,
             labelText: widget.labelText,
             hintText: widget.hintText,
             floatingLabelBehavior: FloatingLabelBehavior.always,
+            errorMaxLines: 2,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(Spaces.s),
             ),

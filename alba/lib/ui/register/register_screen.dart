@@ -17,22 +17,60 @@ class RegisterScreen extends StatefulWidget {
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
+  final Color textColor = Color(0xFF334155);
+  final Color primaryColor = Color(0xFF1D4ED8);
+  final Color buttonGreen = Color(0xFF84F41E);
+
+  final viewmodel = RegisterViewmodel(injector.get<AuthRepository>());
+  final validator = RegisterValidator();
+  final dto = CredentialsRegisterDto();
+
+  final emailController = TextEditingController();
+  final passwordController = TextEditingController();
+  final confirmPasswordController = TextEditingController();
+
+  final formKey = GlobalKey<FormState>();
+
+  void listener() {
+    final state = viewmodel.state;
+    switch (state) {
+      case RegisterStateSuccess():
+        Navigator.pop(context);
+        break;
+      case RegisterStateError():
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(state.message)));
+        break;
+      default:
+        break;
+    }
+  }
+
+  void submmit() {
+    if (formKey.currentState!.validate()) {
+      viewmodel.register(dto);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Preencha todos os campos corretamente')),
+      );
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    viewmodel.addListener(listener);
+  }
+
+  @override
+  void dispose() {
+    viewmodel.removeListener(listener);
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
-    const Color textColor = Color(0xFF334155);
-    const Color primaryColor = Color(0xFF1D4ED8);
-    const Color buttonGreen = Color(0xFF84F41E);
-
-    final viewmodel = RegisterViewmodel(injector.get<AuthRepository>());
-    final validator = RegisterValidator();
-    final dto = CredentialsRegisterDto();
-
-    final emailController = TextEditingController();
-    final passwordController = TextEditingController();
-    final confirmPasswordController = TextEditingController();
-
-    final formKey = GlobalKey<FormState>();
-
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -75,6 +113,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   InputRegister(
                     controller: passwordController,
                     title: 'Digite uma Senha',
+                    isPassword: true,
                     labelText: 'Senha',
                     hintText: '••••••••',
                     obscureText: true,
@@ -87,6 +126,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   InputRegister(
                     controller: confirmPasswordController,
                     title: 'Confirme sua Senha',
+                    isPassword: true,
                     labelText: 'Confirmar Senha',
                     hintText: '••••••••',
                     obscureText: true,
@@ -96,26 +136,36 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     validator: validator.byField(dto, 'confirmPassword'),
                   ),
 
-                  ElevatedButton(
-                    onPressed: () {
-                      if (formKey.currentState!.validate()) {
-                        viewmodel.register(dto);
-                        Navigator.pop(context);
-                      }
+                  ListenableBuilder(
+                    listenable: viewmodel,
+                    builder: (context, child) {
+                      final isLoading = viewmodel.state is RegisterStateLoading;
+                      return ElevatedButton(
+                        onPressed: isLoading ? null : submmit,
+                        style: ElevatedButton.styleFrom(
+                          minimumSize: const Size(double.infinity, 50),
+                          backgroundColor: buttonGreen,
+                          shadowColor: textColor,
+                        ),
+                        child: isLoading
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : Text(
+                                'Cadastrar',
+                                style: TextStyle(
+                                  color: primaryColor,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: Spaces.xl,
+                                ),
+                              ),
+                      );
                     },
-                    style: ElevatedButton.styleFrom(
-                      minimumSize: const Size(double.infinity, 50),
-                      backgroundColor: buttonGreen,
-                      shadowColor: textColor,
-                    ),
-                    child: Text(
-                      'Cadastrar',
-                      style: TextStyle(
-                        color: primaryColor,
-                        fontWeight: FontWeight.bold,
-                        fontSize: Spaces.xl,
-                      ),
-                    ),
                   ),
 
                   const SizedBox(height: Spaces.l),
