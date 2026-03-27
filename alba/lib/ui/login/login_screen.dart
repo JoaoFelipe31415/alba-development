@@ -13,6 +13,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:sign_in_button/sign_in_button.dart';
 import 'package:alba/ui/register/register_screen.dart';
+import 'package:alba/ui/esqueci_senha/senha.dart';
 
 const double gap = 12.5;
 const double radiusEnterButton = Spaces.m + 2;
@@ -127,8 +128,15 @@ class _LoginScreenState extends State<LoginScreen> {
                       Align(
                         alignment: Alignment.centerRight,
                         child: TextButton(
-                          onPressed: () {},
-                          child: Text('Esqueci minha senha'),
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const ForgotPasswordScreen(),
+                              ),
+                            );
+                          },
+                          child: const Text('Esqueci minha senha'),
                         ),
                       ),
                       ElevatedButton(

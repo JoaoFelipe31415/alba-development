@@ -22,6 +22,14 @@
           }
         },
         {
+          "client_id": "371706293630-i24e8lrbbff4in19qs8pksdb2d5o2f7h.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.alba.app",
+            "certificate_hash": "06a35afdaafc56fd10bc6a51f7ed85fd9fa17626"
+          }
+        },
+        {
           "client_id": "371706293630-mlhqvrrpsiv3ibj23eh0dv2shsvob30q.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
