@@ -33,7 +33,6 @@ class MetaDto {
     tag = value;
   }
 
-  // Converter para Map para salvar no Firestore
   Map<String, dynamic> toMap() {
     return {
       'tituloMeta': tituloMeta,
@@ -45,7 +44,6 @@ class MetaDto {
     };
   }
 
-  // Converter do documento Firestore para objeto
   factory MetaDto.fromMap(Map<String, dynamic> data, String id) {
     return MetaDto(
       id: id,

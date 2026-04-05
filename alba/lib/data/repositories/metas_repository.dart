@@ -8,7 +8,6 @@ class MetasRepository {
 
   String get _userId => _auth.currentUser?.uid ?? '';
 
-  // CREATE - Criar nova meta
   Future<String> criarMeta(MetaDto meta) async {
     try {
       meta.userId = _userId;
@@ -21,7 +20,6 @@ class MetasRepository {
     }
   }
 
-  // READ - Obter todas as metas do usuário
   Future<List<MetaDto>> obterMetas() async {
     try {
       final querySnapshot = await _firestore
@@ -38,7 +36,6 @@ class MetasRepository {
     }
   }
 
-  // READ - Stream de metas em tempo real
   Stream<List<MetaDto>> obterMetasStream() {
     try {
       return _firestore
@@ -58,7 +55,6 @@ class MetasRepository {
     }
   }
 
-  // READ - Obter meta por ID
   Future<MetaDto?> obterMetaPorId(String id) async {
     try {
       final doc = await _firestore.collection('Metas').doc(id).get();
@@ -71,7 +67,6 @@ class MetasRepository {
     }
   }
 
-  // UPDATE - Atualizar meta existente
   Future<void> atualizarMeta(MetaDto meta) async {
     try {
       if (meta.id == null) {
@@ -91,12 +86,10 @@ class MetasRepository {
     }
   }
 
-  // DELETE - Excluir meta
   Future<void> excluirMeta(String id) async {
     try {
       await _firestore.collection('Metas').doc(id).delete();
 
-      // Atualizar tarefas vinculadas - definir metaId como null
       final tarefas = await _firestore
           .collection('tarefas')
           .where('metaId', isEqualTo: id)
@@ -110,7 +103,6 @@ class MetasRepository {
     }
   }
 
-  // SEARCH - Filtrar metas por título
   Future<List<MetaDto>> buscarMetasPorTitulo(String titulo) async {
     try {
       final querySnapshot = await _firestore
@@ -122,7 +114,6 @@ class MetasRepository {
           .map((doc) => MetaDto.fromMap(doc.data(), doc.id))
           .toList();
 
-      // Filtro local para título (case-insensitive)
       return metas
           .where(
             (meta) =>
@@ -134,7 +125,6 @@ class MetasRepository {
     }
   }
 
-  // Stream de busca em tempo real
   Stream<List<MetaDto>> buscarMetasStream(String titulo) {
     try {
       return _firestore

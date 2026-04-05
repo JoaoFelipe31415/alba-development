@@ -31,7 +31,6 @@ class _GeraciamentoMetasScreenState extends State<GeraciamentoMetasScreen> {
     Navigator.of(context)
         .push(MaterialPageRoute(builder: (context) => const CriarMetaScreen()))
         .then((_) {
-          // Atualiza a lista quando volta
           if (mounted) {
             setState(() {});
           }
@@ -44,7 +43,6 @@ class _GeraciamentoMetasScreenState extends State<GeraciamentoMetasScreen> {
           MaterialPageRoute(builder: (context) => EditarMetaScreen(meta: meta)),
         )
         .then((_) {
-          // Atualiza a lista quando volta
           if (mounted) {
             setState(() {});
           }
@@ -125,7 +123,6 @@ class _GeraciamentoMetasScreenState extends State<GeraciamentoMetasScreen> {
       ),
       body: Column(
         children: [
-          // Campo de busca
           Padding(
             padding: const EdgeInsets.all(Spaces.l),
             child: TextField(
@@ -170,7 +167,6 @@ class _GeraciamentoMetasScreenState extends State<GeraciamentoMetasScreen> {
               ),
             ),
           ),
-          // Lista de metas
           Expanded(
             child: StreamBuilder<List<MetaDto>>(
               stream: searchQuery.isEmpty
@@ -320,7 +316,6 @@ class _GeraciamentoMetasScreenState extends State<GeraciamentoMetasScreen> {
                               ),
                             ),
                             const SizedBox(height: Spaces.s),
-                            // Indicador de progresso
                             LinearProgressIndicator(
                               value: progresso > 0 ? 1.0 : 0.0,
                               backgroundColor: context.colors.greyTwo,

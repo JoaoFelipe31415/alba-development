@@ -86,7 +86,6 @@ class _EditarMetaScreenState extends State<EditarMetaScreen> {
       }
     });
 
-    // Verificar se há erros
     if (tituloError != null ||
         descricaoError != null ||
         prazoError != null ||

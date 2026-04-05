@@ -155,7 +155,6 @@ class _InicioScreenState extends State<InicioScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Seção Minhas Metas
                 Text(
                   'Minhas Metas',
                   style: TextStyle(
@@ -165,7 +164,6 @@ class _InicioScreenState extends State<InicioScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                // Lista de metas
                 if (todasAsMetas.isNotEmpty)
                   ...todasAsMetas.map((meta) {
                     return GestureDetector(
@@ -187,12 +185,11 @@ class _InicioScreenState extends State<InicioScreen> {
                         margin: const EdgeInsets.only(bottom: 16),
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: Color(0xFF1E3A8A), // Azul escuro
+                          color: Color(0xFF1E3A8A),
                           borderRadius: BorderRadius.circular(16),
                         ),
                         child: Row(
                           children: [
-                            // Ícone círculo à esquerda
                             Container(
                               width: 48,
                               height: 48,
@@ -207,7 +204,6 @@ class _InicioScreenState extends State<InicioScreen> {
                               ),
                             ),
                             const SizedBox(width: 16),
-                            // Título no centro
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -223,7 +219,6 @@ class _InicioScreenState extends State<InicioScreen> {
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                   const SizedBox(height: 8),
-                                  // Tag embaixo do título
                                   Container(
                                     padding: const EdgeInsets.symmetric(
                                       horizontal: 10,
@@ -246,7 +241,6 @@ class _InicioScreenState extends State<InicioScreen> {
                               ),
                             ),
                             const SizedBox(width: 12),
-                            // Ícones à direita (delete e edit)
                             Column(
                               children: [
                                 GestureDetector(
@@ -353,9 +347,9 @@ class _InicioScreenState extends State<InicioScreen> {
 
   Color _getCorTag(String tag) {
     if (tag.toLowerCase() == 'negocio') {
-      return Color(0xFF10B981); // Verde
+      return Color(0xFF10B981);
     } else {
-      return Color(0xFF3B82F6); // Azul
+      return Color(0xFF3B82F6);
     }
   }
 }
