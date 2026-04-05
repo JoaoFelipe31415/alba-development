@@ -7,6 +7,7 @@ import 'package:alba/ui/login/login_screen.dart';
 import 'package:alba/ui/metas/criar_meta_screen.dart';
 import 'package:alba/ui/metas/editar_meta_screen.dart';
 import 'package:alba/ui/metas/gerenciamento_metas_screen.dart';
+import 'package:alba/ui/tarefas/gerenciamento_tarefas_screen.dart';
 import 'package:flutter/material.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -23,6 +24,7 @@ class _HomeScreenState extends State<HomeScreen> {
   late final List<Widget> _screens = [
     const InicioScreen(),
     const GeraciamentoMetasScreen(),
+    const GerenciamentoTarefasScreen(),
     const _ProximamentScreen(), // Progresso
     const _ProximamentScreen(), // On-Demand
     const _ProximamentScreen(), // Menu
@@ -47,6 +49,7 @@ class _HomeScreenState extends State<HomeScreen> {
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Início'),
           BottomNavigationBarItem(icon: Icon(Icons.flag), label: 'Metas'),
+          BottomNavigationBarItem(icon: Icon(Icons.check_circle), label: 'Tarefas',),
           BottomNavigationBarItem(
             icon: Icon(Icons.bar_chart),
             label: 'Progresso',
