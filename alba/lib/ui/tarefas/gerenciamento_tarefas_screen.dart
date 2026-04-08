@@ -21,7 +21,11 @@ class _GerenciamentoTarefasScreenState
     'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
   ];
   String _mesSelecionado = 'Abril';
-  int _diaSelecionado = 2;    
+  
+  String _mesDoCalendario = 'Abril'; 
+  int _diaSelecionado = DateTime.now().day;   
+  int _offsetDias = 0; 
+  
   final TarefasRepository _tarefasRepository = TarefasRepository();
   final TextEditingController _buscaController = TextEditingController();
 
@@ -32,25 +36,8 @@ class _GerenciamentoTarefasScreenState
     _buscaController.dispose();
     super.dispose();
   }
-  Widget _buildSecaoTitulo(String titulo, {Widget? extra}) {
-    final colors = Theme.of(context).extension<AppColors>()!;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 16),
-      child: Row(
-        children: [
-          Text(
-            titulo,
-            style: TextStyle(
-              color: colors.primaryColor,
-              fontSize: 26,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          if (extra != null) ...[const SizedBox(width: 10), extra],
-        ],
-      ),
-    );
-  }
+
+  // --- FUNÇÕES DE AÇÃO ---
 
   Future<void> _confirmarExclusao(TarefaDto tarefa) async {
     final confirmar = await showDialog<bool>(
@@ -67,8 +54,13 @@ class _GerenciamentoTarefasScreenState
             ),
             ElevatedButton(
               onPressed: () => Navigator.pop(context, true),
-              style: ElevatedButton.styleFrom(backgroundColor:colors.primaryColor),
-              child: const Text('Excluir'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: colors.primaryColor,
+                elevation: 0,
+              ),
+              child: Text('Excluir',
+                style: TextStyle(color: colors.whiteColor, fontWeight: FontWeight.bold),
+              ),
             ),
           ],
         );
@@ -78,7 +70,7 @@ class _GerenciamentoTarefasScreenState
     if (confirmar == true && tarefa.id != null) {
       try {
         await _tarefasRepository.excluirTarefa(tarefa.id!);
-
+        setState(() {});
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Tarefa excluída com sucesso.')),
@@ -92,53 +84,71 @@ class _GerenciamentoTarefasScreenState
     }
   }
 
-  String _formatarTag(String? tag) {
-    if (tag == null || tag.isEmpty) return '';
-    return tag.toLowerCase() == 'negocio' ? 'Negócio' : 'Faculdade';
-  }
+  void _mostrarOpcoesTarefa(TarefaDto tarefa) {
+  showModalBottomSheet(
+    context: context,
+    // Adicione isso para garantir que o fundo do modal acompanhe o design
+    backgroundColor: Colors.white, 
+    shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+    builder: (context) {
+      final appColors = Theme.of(context).extension<AppColors>()!;
 
-  Color _corTag(String? tag, BuildContext context) {
-  final appColors = Theme.of(context).extension<AppColors>()!;
-
-  if (tag == null || tag.isEmpty) return appColors.greyThree; // Usando seu cinza
-  
-  return tag.toLowerCase() == 'negocio'
-      ? const Color(0xFF10B981)
-      : const Color(0xFFE11D48);
-}
-
-  Widget _buildDia(String letra, String dia, TarefaDto tarefa) {
-    final appColors = Theme.of(context).extension<AppColors>()!;
-    final selecionado = tarefa.diasRealizacao.contains(dia);
-
-    return Container(
-      width: 34,
-      height: 34,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: selecionado ? appColors.successColor : appColors.whiteColor,
-        shape: BoxShape.circle,
-        border: Border.all(color: appColors.successColor, width: 2),
-      ),
-      child: Text(
-        letra,
-        style: TextStyle(
-          color: selecionado ? appColors.whiteColor : const Color(0xFF1E40AF),
-          fontWeight: FontWeight.bold,
+      return SafeArea(
+        child: Wrap(
+          children: [
+            Center(
+              child: Container(
+                margin: const EdgeInsets.only(top: 10, bottom: 5),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+            ),
+            ListTile(
+              leading: Icon(Icons.edit, color: appColors.azulAlba),
+              title: const Text('Editar', style: TextStyle(fontWeight: FontWeight.w500)),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => EditarTarefaScreen(tarefa: tarefa)));
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.delete, color: appColors.primaryColor),
+              title: const Text('Excluir', style: TextStyle(fontWeight: FontWeight.w500)),
+              onTap: () {
+                Navigator.pop(context);
+                _confirmarExclusao(tarefa);
+              },
+            ),
+            // Adiciona um respiro extra no final para não grudar na borda
+            const SizedBox(height: 10), 
+          ],
         ),
-      ),
-    );
-  }
+      );
+    },
+  );
+}
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AppColors>()!;
 
     return Scaffold(
-     appBar: AppBar(
+      backgroundColor: colors.whiteColor,
+      appBar: AppBar(
         backgroundColor: colors.whiteColor,
         elevation: 0,
-        leading: Icon(Icons.arrow_back_ios, color: colors.azulAlba, size: 20),
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back_ios, color: colors.azulAlba, size: 20),
+          onPressed: () => Navigator.pop(context),
+        ),
         title: Text(
           'Gerenciamento de Tarefas',
           style: TextStyle(color: colors.azulAlba, fontWeight: FontWeight.bold, fontSize: 20),
@@ -154,19 +164,18 @@ class _GerenciamentoTarefasScreenState
         },
         child: Icon(Icons.add, color: colors.whiteColor),
       ),
-     body: SingleChildScrollView(
+      body: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.all(20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
             children: [
-             TextField(
+              TextField(
                 controller: _buscaController,
-                onChanged: (value) => setState(() => _busca = value.trim()), // Corrigido: movido para dentro do TextField
+                onChanged: (value) => setState(() => _busca = value.trim()),
                 decoration: InputDecoration(
                   prefixIcon: const Icon(Icons.search),
-                  // hintText: 'Buscar tarefas...',
+                  hintText: 'Buscar tarefas...',
                   suffixIcon: _busca.isNotEmpty
                       ? IconButton(
                           onPressed: () {
@@ -176,67 +185,48 @@ class _GerenciamentoTarefasScreenState
                           icon: const Icon(Icons.clear),
                         )
                       : null,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(18),
-                  ),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(18)),
                 ),
               ),
-              const SizedBox(height: 14),
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Icon(Icons.arrow_back_ios, size: 18, color: colors.azulAlba,
-                    ),
-                    Text(
-                      "$_mesSelecionado 2025",
-                      style: TextStyle(color: colors.azulAlba, fontSize: 22, fontWeight: FontWeight.bold),
-                    ),
-                    Icon(Icons.arrow_forward_ios, size: 18, color: colors.azulAlba)
-                  ],
-                ),
+              const SizedBox(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  IconButton(
+                    icon: Icon(Icons.arrow_back_ios, size: 18, color: colors.azulAlba),
+                    onPressed: () => setState(() => _offsetDias -= 1),
+                  ),
+                  Text(
+                    "$_mesDoCalendario 2026",
+                    style: TextStyle(color: colors.azulAlba, fontSize: 22, fontWeight: FontWeight.bold),
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.arrow_forward_ios, size: 18, color: colors.azulAlba),
+                    onPressed: () => setState(() => _offsetDias += 1),
+                  ),
+                ],
               ),
               const SizedBox(height: 14),
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: [
-                    _buildCardCalendario("Ter", "30", _diaSelecionado == 31),
-                    _buildCardCalendario("Qua", "01", _diaSelecionado == 1),
-                    _buildCardCalendario("Qui", "02", _diaSelecionado == 2),
-                    _buildCardCalendario("Sex", "03", _diaSelecionado == 3),
-                    _buildCardCalendario("Sab", "04", _diaSelecionado == 4),
-                    _buildCardCalendario("Dom", "05", _diaSelecionado == 5),
-                  ],
-                ),
+                child: Row(children: _gerarCardsCalendario(colors)),
               ),
-              const SizedBox(height: 10),
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                child: Text(
-                  "Hoje",
-                  style: TextStyle(color: colors.azulAlba, fontSize: 28, fontWeight: FontWeight.bold),
-                ),
+              const SizedBox(height: 32),
+              Text(
+                "Hoje",
+                style: TextStyle(color: colors.azulAlba, fontSize: 28, fontWeight: FontWeight.bold),
               ),
-                StreamBuilder<List<TarefaDto>>(
+              const SizedBox(height: 16),
+              StreamBuilder<List<TarefaDto>>(
                 stream: _tarefasRepository.buscarTarefasStream(_busca, mes: null, dia: _diaSelecionado),
                 builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
+                  if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
                     return const Center(child: CircularProgressIndicator());
                   }
                   final tarefas = snapshot.data ?? [];
                   if (tarefas.isEmpty) {
-                    return Center(child: Text('Nenhuma tarefa encontrada',
-                    style: TextStyle(
-        color: colors.greyFive, // 👈 Usa o cinza do seu design system
-        fontSize: 14,
-        fontWeight: FontWeight.w500,)
-        )
-                    );
+                    return Center(child: Text('Nenhuma tarefa para este dia.', style: TextStyle(color: colors.greyFive)));
                   }
-
-
                   return ListView.separated(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
@@ -257,69 +247,28 @@ class _GerenciamentoTarefasScreenState
                   );
                 },
               ),
-              const SizedBox(height: 24),
-                 Row(
+              const SizedBox(height: 40),
+              Row(
                 children: [
-                  Text(
-                    "Tarefas",
-                    style: TextStyle(color: colors.azulAlba, fontSize: 26, fontWeight: FontWeight.bold),
-                  ),
+                  Text("Tarefas", style: TextStyle(color: colors.azulAlba, fontSize: 26, fontWeight: FontWeight.bold)),
                   const SizedBox(width: 20),
-                  PopupMenuButton<String>(
-                    onSelected: (String novoMes) {
-                      setState(() => _mesSelecionado = novoMes);
-                    },
-                    itemBuilder: (BuildContext context) {
-                      return _meses.map((String mes) {
-                        return PopupMenuItem<String>(value: mes, child: Text(mes));
-                      }).toList();
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: colors.neonGreen,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Row(
-                        children: [
-                          Text(_mesSelecionado, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                          Icon(Icons.keyboard_arrow_down, size: 18, color: colors.azulAlba),
-                        ],
-                      ),
-                    ),
-                  ),
+                  _buildFiltroMes(colors),
                 ],
               ),
               const SizedBox(height: 20),
               StreamBuilder<List<TarefaDto>>(
                 stream: _tarefasRepository.buscarTarefasStream(_busca, mes: _mesSelecionado, dia: null),
                 builder: (context, snapshot) {
-
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
                   if (!snapshot.hasData) return const SizedBox();
-
                   final tarefas = snapshot.data!;
-
                   if (tarefas.isEmpty) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 20),
-        child: Center(
-          child: Text(
-            "Nenhuma tarefa encontrada para este mês.",
-            style: TextStyle(color: colors.greyFive),
-          ),
-        ),
-      );
-    }
-  
+                    return Center(child: Text("Nenhuma tarefa neste mês.", style: TextStyle(color: colors.greyFive)));
+                  }
                   return ListView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
                     itemCount: tarefas.length,
-                    itemBuilder: (context, index) => _buildTimelineTask(tarefas[index]),
+                    itemBuilder: (context, index) => _buildTimelineTask(tarefas[index], colors),
                   );
                 },
               ),
@@ -331,59 +280,70 @@ class _GerenciamentoTarefasScreenState
     );
   }
 
-Widget _buildCardCalendario(String diaSemana, String numero, bool selecionado) {
-   final colors = Theme.of(context).extension<AppColors>()!;
+  // --- WIDGETS AUXILIARES ---
+
+  Widget _buildFiltroMes(AppColors colors) {
+    return PopupMenuButton<String>(
+      onSelected: (String novoMes) => setState(() => _mesSelecionado = novoMes),
+      itemBuilder: (context) => _meses.map((mes) => PopupMenuItem(value: mes, child: Text(mes))).toList(),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(color: colors.neonGreen, borderRadius: BorderRadius.circular(10)),
+        child: Row(
+          children: [
+            Text(_mesSelecionado, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+            Icon(Icons.keyboard_arrow_down, size: 18, color: colors.azulAlba),
+          ],
+        ),
+      ),
+    );
+  }
+
+  List<Widget> _gerarCardsCalendario(AppColors colors) {
+    List<Widget> cards = [];
+    DateTime hoje = DateTime.now().add(Duration(days: _offsetDias));
+    List<String> diasSemana = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sab"];
+
+    for (int i = 0; i < 7; i++) {
+      DateTime dataCard = hoje.add(Duration(days: i));
+      String diaNome = diasSemana[dataCard.weekday % 7];
+      String diaNum = dataCard.day.toString().padLeft(2, '0');
+      bool selecionado = _diaSelecionado == dataCard.day;
+      cards.add(_buildCardCalendario(diaNome, diaNum, selecionado, colors));
+    }
+    return cards;
+  }
+
+  Widget _buildCardCalendario(String diaSemana, String numero, bool selecionado, AppColors colors) {
     return GestureDetector(
-      onTap: () {
-        setState(() {
-          _diaSelecionado = int.parse(numero);
-        });
-      },
+      onTap: () => setState(() => _diaSelecionado = int.parse(numero)),
       child: Container(
         margin: const EdgeInsets.only(right: 12),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
           color: selecionado ? colors.neonGreen : colors.whiteColor,
           borderRadius: BorderRadius.circular(15),
-          border: Border.all(
-              color: selecionado ? colors.neonGreen: colors.greyThree, width: 1),
+          border: Border.all(color: selecionado ? colors.neonGreen : colors.greyThree),
         ),
         child: Column(
-          mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              diaSemana,
-              style: TextStyle(
-                  color: selecionado ? colors.whiteColor : colors.greyThree, fontSize: 14),
-            ),
+            Text(diaSemana, style: TextStyle(color: selecionado ? colors.whiteColor : colors.greyThree, fontSize: 14)),
             const SizedBox(height: 4),
-            Text(
-              numero,
-              style: TextStyle(
-                  color: selecionado ? colors.whiteColor : colors.azulAlba,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold),
-            ),
+            Text(numero, style: TextStyle(color: selecionado ? colors.whiteColor : colors.azulAlba, fontSize: 18, fontWeight: FontWeight.bold)),
           ],
         ),
       ),
     );
-  } // <--- FECHA A FUNÇÃO DO CALENDÁRIO
+  }
 
-  Widget _buildTimelineTask(TarefaDto tarefa) {
- final colors = Theme.of(context).extension<AppColors>()!;
+  Widget _buildTimelineTask(TarefaDto tarefa, AppColors colors) {
     return IntrinsicHeight(
       child: Row(
         children: [
           Column(
             children: [
-              Text(
-                tarefa.dataCriacao.day.toString().padLeft(2, '0'),
-                style: TextStyle(
-                    color: colors.greyThree,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16),
-              ),
+              Text(tarefa.dataCriacao.day.toString().padLeft(2, '0'),
+                  style: TextStyle(color: colors.greyThree, fontWeight: FontWeight.bold, fontSize: 16)),
               const SizedBox(height: 4),
               Expanded(child: Container(width: 2, color: colors.greyThree)),
             ],
@@ -396,58 +356,31 @@ Widget _buildCardCalendario(String diaSemana, String numero, bool selecionado) {
               decoration: BoxDecoration(
                 color: colors.whiteColor,
                 borderRadius: BorderRadius.circular(18),
-                boxShadow: [
-                  BoxShadow(
-                      color: colors.blackColor.withValues(alpha: 0.05),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4))
-                ],
+                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))],
               ),
               child: Row(
                 children: [
-                  Transform.scale(
-                    scale: 1.2,
-                    child: Checkbox(
-                      value: false,
-                      onChanged: (v) {},
-                      shape: const CircleBorder(),
-                      activeColor: colors.neonGreen,
-                      side: BorderSide(color: colors.azulAlba, width: 2),
-                    ),
+                  Checkbox(
+                    value: false,
+                    onChanged: (v) {},
+                    shape: const CircleBorder(),
+                    activeColor: colors.neonGreen,
+                    side: BorderSide(color: colors.azulAlba, width: 2),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(tarefa.tituloTarefa,
-                            style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: colors.azulAlba,
-                                fontSize: 15)),
+                        Text(tarefa.tituloTarefa, style: TextStyle(fontWeight: FontWeight.bold, color: colors.azulAlba, fontSize: 15)),
                         const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            Icon(Icons.subdirectory_arrow_right,
-                                size: 14, color: _corTag(tarefa.tag, context)),
-                            const SizedBox(width: 4),
-                            Expanded(
-                              child: Text(
-                                "Meta: ${tarefa.tituloMeta ?? 'Sem Meta'}",
-                                style: TextStyle(
-                                    fontSize: 12,
-                                    color: _corTag(tarefa.tag, context),
-                                    fontWeight: FontWeight.w500),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ),
+                        Text("Meta: ${tarefa.tituloMeta ?? 'Sem Meta'}",
+                            style: TextStyle(fontSize: 12, color: colors.azulAlba.withOpacity(0.7))),
                       ],
                     ),
                   ),
                   IconButton(
-                    icon:  Icon(Icons.more_vert, color: colors.textPrimaryColor),
+                    icon: Icon(Icons.more_vert, color: colors.azulAlba),
                     onPressed: () => _mostrarOpcoesTarefa(tarefa),
                   ),
                 ],
@@ -458,42 +391,4 @@ Widget _buildCardCalendario(String diaSemana, String numero, bool selecionado) {
       ),
     );
   }
-
- void _mostrarOpcoesTarefa(TarefaDto tarefa) {
-  showModalBottomSheet(
-    context: context,
-    shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-    builder: (context) {
-      // 1. A variável fica aqui, dentro das chaves do builder
-      final appColors = Theme.of(context).extension<AppColors>()!;
-
-      return Wrap(
-        children: [
-          ListTile(
-            // 2. Removido o 'const' e atualizado para 'appColors.azulAlba'
-            leading: Icon(Icons.edit, color: appColors.azulAlba),
-            title: const Text('Editar'),
-            onTap: () {
-              Navigator.pop(context);
-              Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (_) => EditarTarefaScreen(tarefa: tarefa)));
-            },
-          ),
-          ListTile(
-            // 3. Removido o 'const' e atualizado para 'appColors.primaryColor'
-            leading: Icon(Icons.delete, color: appColors.primaryColor),
-            title: const Text('Excluir'),
-            onTap: () {
-              Navigator.pop(context);
-              _confirmarExclusao(tarefa);
-            },
-          ),
-        ],
-      );
-    }, // O builder fecha aqui
-  );
 }
-    }
