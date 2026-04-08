@@ -7,6 +7,7 @@ class AppColors extends ThemeExtension<AppColors> {
   final Color greyOne;
   final Color greyTwo;
   final Color greyThree;
+  final Color greyFive;
   final Color successColor;
   final Color successLightColor;
   final Color errorColor;
@@ -20,6 +21,8 @@ class AppColors extends ThemeExtension<AppColors> {
   final Color blackColor;
   final Color textPrimaryColor;
   final Color textSupportColor;
+  final Color azulAlba;
+  final Color neonGreen;
 
   const AppColors({
     this.primaryColor = const Color(0xFFC22546),
@@ -27,6 +30,7 @@ class AppColors extends ThemeExtension<AppColors> {
     this.greyOne = const Color(0xFF232323),
     this.greyTwo = const Color(0xFF424242),
     this.greyThree = const Color(0xFFABABAB),
+    this.greyFive = const Color (0xFF757575),
     this.successColor = const Color(0xFF00C933),
     this.successLightColor = const Color(0xFF34C759),
     this.errorColor = const Color(0xFFFF0004),
@@ -40,6 +44,10 @@ class AppColors extends ThemeExtension<AppColors> {
     this.blackColor = const Color(0xFF000000),
     this.textPrimaryColor = const Color(0xFFABABAB),
     this.textSupportColor = const Color(0xFF424242),
+    this.azulAlba = const Color(0xFF0532AF),
+    this.neonGreen = const Color(0xFF7FFF00)
+   
+    
   });
 
   @override
@@ -49,6 +57,7 @@ class AppColors extends ThemeExtension<AppColors> {
     Color? greyOne,
     Color? greyTwo,
     Color? greyThree,
+    Color? greyFive,
     Color? successColor,
     Color? errorColor,
     Color? errorLightColor,
@@ -59,6 +68,8 @@ class AppColors extends ThemeExtension<AppColors> {
     Color? inputColor,
     Color? whiteColor,
     Color? blackColor,
+    Color? azulAlba,
+    Color? neonGreen
   }) {
     return AppColors(
       primaryColor: primaryColor ?? this.primaryColor,
@@ -66,6 +77,7 @@ class AppColors extends ThemeExtension<AppColors> {
       greyOne: greyOne ?? this.greyOne,
       greyTwo: greyTwo ?? this.greyTwo,
       greyThree: greyThree ?? this.greyThree,
+      greyFive: greyFive ?? this.greyFive,
       successColor: successColor ?? this.successColor,
       errorColor: errorColor ?? this.errorColor,
       errorLightColor: errorLightColor ?? this.errorLightColor,
@@ -76,6 +88,8 @@ class AppColors extends ThemeExtension<AppColors> {
       inputColor: inputColor ?? this.inputColor,
       whiteColor: whiteColor ?? this.whiteColor,
       blackColor: blackColor ?? this.blackColor,
+      azulAlba: azulAlba ?? this.azulAlba,
+      neonGreen: neonGreen ?? this.neonGreen
     );
   }
 
@@ -89,6 +103,7 @@ class AppColors extends ThemeExtension<AppColors> {
       greyOne: Color.lerp(greyOne, other.greyOne, t)!,
       greyTwo: Color.lerp(greyTwo, other.greyTwo, t)!,
       greyThree: Color.lerp(greyThree, other.greyThree, t)!,
+      greyFive: Color.lerp(greyFive, other.greyFive, t)!,
       successColor: Color.lerp(successColor, other.successColor, t)!,
       errorColor: Color.lerp(errorColor, other.errorColor, t)!,
       alert: Color.lerp(alert, other.alert, t)!,
@@ -118,6 +133,8 @@ class AppColors extends ThemeExtension<AppColors> {
         other.textSupportColor,
         t,
       )!,
+      azulAlba: Color.lerp(azulAlba, other.azulAlba, t)!,
+      neonGreen: Color.lerp(neonGreen, other.neonGreen, t)!
     );
   }
 }

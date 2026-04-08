@@ -79,17 +79,45 @@ class TarefaDto {
   }
 
   factory TarefaDto.fromMap(Map<String, dynamic> data, String id) {
+    String _tratarString(dynamic valor) {
+      if (valor == null) return '';
+      if (valor is String) return valor;
+      // Se for um DocumentReference (o causador do erro), pegamos o ID dele
+      try {
+        return valor.id; 
+      } catch (e) {
+        return valor.toString();
+      }
+    }
+
     return TarefaDto(
       id: data['id'] ?? id,
       tituloTarefa: data['tituloTarefa'] ?? '',
       diasRealizacao: List<String>.from(data['diasRealizacao'] ?? []),
       horario: data['horario'],
-      metaId: data['metaId'],
+      metaId: _tratarString(data['metaId']), // 👈 Ajustado
       tituloMeta: data['tituloMeta'],
-      tag: data['tag'], // 👈 NOVO
+      tag: data['tag'],
       status: data['status'] ?? 'pendente',
-      userId: data['userId'] ?? '',
-      dataCriacao: (data['dataCriacao'] as dynamic).toDate() ?? DateTime.now(),
+      userId: _tratarString(data['userId']), // 👈 Ajustado
+      dataCriacao: data['dataCriacao'] != null 
+          ? (data['dataCriacao'] as dynamic).toDate() 
+          : DateTime.now(),
     );
   }
-}
+} 
+    
+//     return TarefaDto(
+//       id: data['id'] ?? id,
+//       tituloTarefa: data['tituloTarefa'] ?? '',
+//       diasRealizacao: List<String>.from(data['diasRealizacao'] ?? []),
+//       horario: data['horario'],
+//       metaId: data['metaId'],
+//       tituloMeta: data['tituloMeta'],
+//       tag: data['tag'], // 👈 NOVO
+//       status: data['status'] ?? 'pendente',
+//       userId: data['userId'] ?? '',
+//       dataCriacao: (data['dataCriacao'] as dynamic).toDate() ?? DateTime.now(),
+//     );
+//   }
+// }
