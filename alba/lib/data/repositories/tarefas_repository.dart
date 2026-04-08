@@ -42,9 +42,9 @@ class TarefasRepository {
 
   Future<List<TarefaDto>> obterTarefas() async {
     try {
-      if (_userId.isEmpty) {
-        throw Exception('Usuário não autenticado.');
-      }
+      // if (_userId.isEmpty) {
+      //   throw Exception('Usuário não autenticado.');
+      // }
 
       final querySnapshot = await _firestore
           .collection(_collection)
@@ -77,7 +77,7 @@ class TarefasRepository {
 
       return _firestore
           .collection(_collection)
-          .where('userId', isEqualTo: _userId)
+          // .where('userId', isEqualTo: _userId)
           .orderBy('dataCriacao', descending: true)
           .snapshots()
           .map(
@@ -215,15 +215,11 @@ class TarefasRepository {
     }
   }
 
-  Stream<List<TarefaDto>> buscarTarefasStream(String titulo) {
+  Stream<List<TarefaDto>> buscarTarefasStream(String titulo, {String? mes, int? dia}) {
     try {
-      if (_userId.isEmpty) {
-        throw Exception('Usuário não autenticado.');
-      }
-
       return _firestore
           .collection(_collection)
-          .where('userId', isEqualTo: _userId)
+          // .where('userId', isEqualTo: _userId) // Descomente quando o login estiver ok
           .orderBy('dataCriacao', descending: true)
           .snapshots()
           .map((querySnapshot) {
@@ -231,23 +227,37 @@ class TarefasRepository {
                 .map((doc) => TarefaDto.fromMap(doc.data(), doc.id))
                 .toList();
 
-            if (titulo.isEmpty) {
-              return tarefas;
-            }
+            final mesesMap = {
+              'Janeiro': 1, 'Fevereiro': 2, 'Março': 3, 'Abril': 4,
+              'Maio': 5, 'Junho': 6, 'Julho': 7, 'Agosto': 8,
+              'Setembro': 9, 'Outubro': 10, 'Novembro': 11, 'Dezembro': 12
+            };
 
-            return tarefas
-                .where(
-                  (tarefa) => tarefa.tituloTarefa.toLowerCase().contains(
-                    titulo.toLowerCase(),
-                  ),
-                )
-                .toList();
+            return tarefas.where((tarefa) {
+              // 1. Filtro por Título (Busca)
+              bool bateTitulo = titulo.isEmpty || 
+                  tarefa.tituloTarefa.toLowerCase().contains(titulo.toLowerCase());
+
+              // 2. Filtro por Mês
+              bool bateMes = true;
+              if (mes != null && mesesMap.containsKey(mes)) {
+                bateMes = tarefa.dataCriacao.month == mesesMap[mes];
+              }
+
+              // 3. Filtro por Dia (AQUI ESTAVA O QUE FALTAVA!)
+              // Se 'dia' for null (como na lista de baixo), ele ignora o filtro.
+              // Se 'dia' tiver valor (como na seção 'Hoje'), ele filtra.
+              bool bateDia = true;
+              if (dia != null) {
+                bateDia = tarefa.dataCriacao.day == dia;
+              }
+
+              return bateTitulo && bateMes && bateDia;
+            }).toList();
           });
     } catch (e) {
       print('ERRO GERAL buscarTarefasStream: $e');
-      throw Exception(
-        'Não foi possível buscar as tarefas em tempo real. Tente novamente.',
-      );
+      throw Exception('Não foi possível buscar as tarefas.');
     }
   }
 }
