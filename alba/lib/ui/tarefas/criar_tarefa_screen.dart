@@ -39,6 +39,7 @@ class _CriarTarefaScreenState extends State<CriarTarefaScreen> {
     'sabado',
     'domingo',
   ];
+  bool _carregandoMetas = true;
 
   List<MetaDto> get _metasFiltradas {
     if (_tagSelecionada == null) return [];
@@ -59,40 +60,25 @@ class _CriarTarefaScreenState extends State<CriarTarefaScreen> {
       if (!mounted) return;
       setState(() {
         _metas = metas;
+        _carregandoMetas = false;
       });
-    } catch (_) {}
-  }
-
-  @override
-  void dispose() {
-    _tituloController.dispose();
-    _horarioController.dispose();
-    super.dispose();
+    } catch (e) {
+      if (!mounted) return;
+      debugPrint('Erro ao carregar metas: $e');
+      setState(() {
+        _carregandoMetas = false;
+      });
+    }
   }
 
   Future<void> _criarTarefa() async {
-    final tituloErro = TarefaValidator.validateTitulo(_tituloController.text);
-    final diasErro = TarefaValidator.validateDias(_diasSelecionados);
-    final horarioErro = TarefaValidator.validateHorario(
-      _horarioController.text,
-    );
-    final metaErro = TarefaValidator.validateMeta(
-      vincularMeta: _vincularMeta,
-      metaId: _metaSelecionada?.id,
-    );
-
-    if (tituloErro != null) {
-      _mostrarErro(tituloErro);
+    if (!(_formKey.currentState?.validate() ?? false)) {
       return;
     }
 
+    final diasErro = TarefaValidator.validateDias(_diasSelecionados);
     if (diasErro != null) {
       _mostrarErro(diasErro);
-      return;
-    }
-
-    if (horarioErro != null) {
-      _mostrarErro(horarioErro);
       return;
     }
 
@@ -100,6 +86,11 @@ class _CriarTarefaScreenState extends State<CriarTarefaScreen> {
       _mostrarErro('Selecione a categoria da meta.');
       return;
     }
+
+    final metaErro = TarefaValidator.validateMeta(
+      vincularMeta: _vincularMeta,
+      metaId: _metaSelecionada?.id,
+    );
 
     if (metaErro != null) {
       _mostrarErro(metaErro);
@@ -141,9 +132,9 @@ class _CriarTarefaScreenState extends State<CriarTarefaScreen> {
   }
 
   void _mostrarErro(String mensagem) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(mensagem)));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(mensagem)),
+    );
   }
 
   @override
@@ -154,12 +145,22 @@ class _CriarTarefaScreenState extends State<CriarTarefaScreen> {
       appBar: AppBar(
         backgroundColor: colors.whiteColor,
         elevation: 0,
-      title: Text('Criar Tarefa',
-        style: TextStyle(color: colors.azulAlba, fontWeight: FontWeight.bold, fontSize: 22)),
-      leading: IconButton(onPressed: () => Navigator.pop(context), icon: Icon(Icons.arrow_back_ios, color: colors.azulAlba),
-      ),
-      bottom: PreferredSize(preferredSize: const Size.fromHeight(1), child: Container(color: colors.azulAlba.withOpacity(0.2), height: 1),
-      ),
+        title: Text(
+          'Criar Tarefa',
+          style: TextStyle(
+            color: colors.azulAlba,
+            fontWeight: FontWeight.bold,
+            fontSize: 22,
+          ),
+        ),
+        leading: IconButton(
+          onPressed: () => Navigator.pop(context),
+          icon: Icon(Icons.arrow_back_ios, color: colors.azulAlba),
+        ),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Container(color: colors.azulAlba.withOpacity(0.2), height: 1),
+        ),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
@@ -173,30 +174,28 @@ class _CriarTarefaScreenState extends State<CriarTarefaScreen> {
                 controller: _tituloController,
                 hint: 'Título da tarefa...',
                 icon: Icons.edit_note_rounded,
-                colors: colors
+                colors: colors,
+                validator: (value) =>
+                    TarefaValidator.validateTitulo(value ?? ''),
               ),
               const SizedBox(height: 28),
-            _buildSectionLabel('Dias de realização', colors),
+              _buildSectionLabel('Dias de realização', colors),
               const SizedBox(height: 12),
               _buildDiasSelector(colors),
-
               const SizedBox(height: 28),
-
               _buildSectionLabel('Horário (opcional)', colors),
               _buildCustomTextField(
                 controller: _horarioController,
                 hint: 'HH:MM',
                 icon: Icons.access_time_rounded,
-                keyboardType: TextInputType.text,
-                colors: colors
+                keyboardType: TextInputType.datetime,
+                colors: colors,
+                validator: (value) =>
+                    TarefaValidator.validateHorario(value),
               ),
-
               const SizedBox(height: 32),
-
               _buildMetaSection(colors),
-
               const SizedBox(height: 48),
-
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
@@ -204,13 +203,20 @@ class _CriarTarefaScreenState extends State<CriarTarefaScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: colors.azulAlba,
                     padding: const EdgeInsets.symmetric(vertical: 18),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16)),
                     elevation: 0,
                   ),
-                  child: _salvando 
-                    ? const CircularProgressIndicator(color: Colors.white)
-                    : const Text('Criar Tarefa', 
-                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
+                  child: _salvando
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : const Text(
+                          'Criar Tarefa',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
+                          ),
+                        ),
                 ),
               ),
             ],
@@ -221,16 +227,23 @@ class _CriarTarefaScreenState extends State<CriarTarefaScreen> {
   }
 
   Widget _buildSectionLabel(String label, AppColors colors) {
-    return Text(label, 
-      style: TextStyle(color: colors.azulAlba, fontWeight: FontWeight.bold, fontSize: 16));
+    return Text(
+      label,
+      style: TextStyle(
+        color: colors.azulAlba,
+        fontWeight: FontWeight.bold,
+        fontSize: 16,
+      ),
+    );
   }
 
   Widget _buildCustomTextField({
-    required TextEditingController controller, 
-    required String hint, 
+    required TextEditingController controller,
+    required String hint,
     required IconData icon,
     required AppColors colors,
     TextInputType? keyboardType,
+    String? Function(String?)? validator,
   }) {
     return Container(
       margin: const EdgeInsets.only(top: 12),
@@ -239,27 +252,29 @@ class _CriarTarefaScreenState extends State<CriarTarefaScreen> {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.grey.shade200),
       ),
-      child: TextField(
+      child: TextFormField(
         controller: controller,
         keyboardType: keyboardType,
+        validator: validator,
         decoration: InputDecoration(
           hintText: hint,
           prefixIcon: Icon(icon, color: colors.azulAlba.withOpacity(0.6)),
           border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(vertical: 15, horizontal: 10),
+          contentPadding:
+              const EdgeInsets.symmetric(vertical: 15, horizontal: 10),
         ),
       ),
     );
   }
 
-  Widget _buildDiasSelector( AppColors colors) {
+  Widget _buildDiasSelector(AppColors colors) {
     return Wrap(
       spacing: 8,
       runSpacing: 8,
       children: _diasSemana.map((dia) {
         final selecionado = _diasSelecionados.contains(dia);
         return ChoiceChip(
-          label: Text(dia.substring(0, 3)), // Abreviação: Seg, Ter...
+          label: Text(dia.substring(0, 3).toUpperCase()),
           selected: selecionado,
           onSelected: (value) {
             setState(() {
@@ -296,7 +311,13 @@ class _CriarTarefaScreenState extends State<CriarTarefaScreen> {
               Switch(
                 value: _vincularMeta,
                 activeColor: colors.neonGreen,
-                onChanged: (v) => setState(() => _vincularMeta = v),
+                onChanged: (v) => setState(() {
+                  _vincularMeta = v;
+                  if (!v) {
+                    _tagSelecionada = null;
+                    _metaSelecionada = null;
+                  }
+                }),
               ),
             ],
           ),
@@ -310,19 +331,44 @@ class _CriarTarefaScreenState extends State<CriarTarefaScreen> {
                 _buildTagButton('Faculdade', 'faculdade', colors),
               ],
             ),
-            if (_tagSelecionada != null) ...[
-              const SizedBox(height: 15),
-              DropdownButtonFormField<MetaDto>(
-                value: _metaSelecionada,
-                hint: const Text('Selecione a meta'),
-                items: _metasFiltradas.map((m) => DropdownMenuItem(value: m, child: Text(m.tituloMeta))).toList(),
-                onChanged: (v) => setState(() => _metaSelecionada = v),
-                decoration: InputDecoration(
-                  filled: true,
-                  fillColor: Colors.white,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            if (_carregandoMetas) ...[
+              const SizedBox(height: 16),
+              const Center(
+                child: SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(),
                 ),
               ),
+            ] else if (_tagSelecionada != null) ...[
+              const SizedBox(height: 15),
+              if (_metasFiltradas.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8.0),
+                  child: Text(
+                    'Nenhuma meta encontrada para esta categoria.',
+                    style: TextStyle(color: colors.greyThree),
+                  ),
+                )
+              else
+                DropdownButtonFormField<MetaDto>(
+                  value: _metaSelecionada,
+                  hint: const Text('Selecione a meta'),
+                  items: _metasFiltradas
+                      .map((m) => DropdownMenuItem(
+                            value: m,
+                            child: Text(m.tituloMeta),
+                          ))
+                      .toList(),
+                  onChanged: (v) => setState(() => _metaSelecionada = v),
+                  decoration: InputDecoration(
+                    filled: true,
+                    fillColor: Colors.white,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
             ]
           ]
         ],
@@ -331,20 +377,30 @@ class _CriarTarefaScreenState extends State<CriarTarefaScreen> {
   }
 
   Widget _buildTagButton(String label, String tag, AppColors colors) {
-    bool isSelected = _tagSelecionada == tag;
+    final isSelected = _tagSelecionada == tag;
     return Expanded(
       child: GestureDetector(
-        onTap: () => setState(() { _tagSelecionada = tag; _metaSelecionada = null; }),
+        onTap: () => setState(() {
+          _tagSelecionada = tag;
+          _metaSelecionada = null;
+        }),
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
             color: isSelected ? colors.azulAlba : Colors.white,
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: isSelected ? colors.azulAlba : Colors.grey.shade300),
+            border: Border.all(
+              color: isSelected ? colors.azulAlba : Colors.grey.shade300,
+            ),
           ),
           child: Center(
-            child: Text(label, 
-              style: TextStyle(color: isSelected ? Colors.white : Colors.grey.shade600, fontWeight: FontWeight.bold)),
+            child: Text(
+              label,
+              style: TextStyle(
+                color: isSelected ? Colors.white : Colors.grey.shade600,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ),
         ),
       ),

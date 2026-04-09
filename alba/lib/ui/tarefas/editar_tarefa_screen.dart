@@ -26,6 +26,7 @@ class _EditarTarefaScreenState extends State<EditarTarefaScreen> {
 
   bool _salvando = false;
   bool _vincularMeta = false;
+  bool _carregandoMetas = true;
 
   List<String> _diasSelecionados = [];
   List<MetaDto> _metas = [];
@@ -47,9 +48,11 @@ class _EditarTarefaScreenState extends State<EditarTarefaScreen> {
     // Preenche os campos com os dados da tarefa recebida
     _tituloController = TextEditingController(text: widget.tarefa.tituloTarefa);
     _horarioController = TextEditingController(text: widget.tarefa.horario ?? '');
-    _diasSelecionados = List<String>.from(widget.tarefa.diasRealizacao);
+    _diasSelecionados = widget.tarefa.diasRealizacao
+      .map((dia) => dia.toLowerCase())
+      .toList();
     _vincularMeta = widget.tarefa.metaId != null;
-    _tagSelecionada = widget.tarefa.tag;
+    _tagSelecionada = widget.tarefa.tag?.toLowerCase();
     _carregarMetas();
   }
 
@@ -66,8 +69,16 @@ class _EditarTarefaScreenState extends State<EditarTarefaScreen> {
       setState(() {
         _metas = metas;
         _metaSelecionada = metaInicial;
+        _carregandoMetas = false;
       });
-    } catch (_) {}
+    } catch (e) {
+      if (!mounted) return;
+      debugPrint('Erro ao carregar metas: $e');
+      setState(() {
+        _metas = [];
+        _carregandoMetas = false;
+      });
+    }
   }
 
   @override
@@ -78,13 +89,13 @@ class _EditarTarefaScreenState extends State<EditarTarefaScreen> {
   }
 
   Future<void> _editarTarefa() async {
-    final tituloErro = TarefaValidator.validateTitulo(_tituloController.text);
-    final diasErro = TarefaValidator.validateDias(_diasSelecionados);
-    final horarioErro = TarefaValidator.validateHorario(_horarioController.text);
-    final metaErro = TarefaValidator.validateMeta(vincularMeta: _vincularMeta, metaId: _metaSelecionada?.id);
+    if (!(_formKey.currentState?.validate() ?? false)) {
+      return;
+    }
 
-    if (tituloErro != null || diasErro != null || horarioErro != null) {
-      _mostrarErro(tituloErro ?? diasErro ?? horarioErro!);
+    final diasErro = TarefaValidator.validateDias(_diasSelecionados);
+    if (diasErro != null) {
+      _mostrarErro(diasErro);
       return;
     }
 
@@ -92,6 +103,8 @@ class _EditarTarefaScreenState extends State<EditarTarefaScreen> {
       _mostrarErro('Selecione a categoria da meta.');
       return;
     }
+
+    final metaErro = TarefaValidator.validateMeta(vincularMeta: _vincularMeta, metaId: _metaSelecionada?.id);
 
     if (metaErro != null) {
       _mostrarErro(metaErro);
@@ -160,6 +173,7 @@ class _EditarTarefaScreenState extends State<EditarTarefaScreen> {
                   controller: _tituloController,
                   hint: 'Título da tarefa...',
                   icon: Icons.edit_note_rounded,
+                  validator: (value) => TarefaValidator.validateTitulo(value ?? ''),
                   colors: colors),
               
               const SizedBox(height: 28),
@@ -173,7 +187,8 @@ class _EditarTarefaScreenState extends State<EditarTarefaScreen> {
                   controller: _horarioController,
                   hint: 'HH:MM',
                   icon: Icons.access_time_rounded,
-                  keyboardType: TextInputType.text,
+                  keyboardType: TextInputType.datetime,
+                  validator: (value) => TarefaValidator.validateHorario(value),
                   colors: colors),
 
               const SizedBox(height: 32),
@@ -214,6 +229,7 @@ class _EditarTarefaScreenState extends State<EditarTarefaScreen> {
     required IconData icon,
     required AppColors colors,
     TextInputType? keyboardType,
+    String? Function(String?)? validator,
   }) {
     return Container(
       margin: const EdgeInsets.only(top: 12),
@@ -222,9 +238,10 @@ class _EditarTarefaScreenState extends State<EditarTarefaScreen> {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.grey.shade200),
       ),
-      child: TextField(
+      child: TextFormField(
         controller: controller,
         keyboardType: keyboardType,
+        validator: validator,
         decoration: InputDecoration(
           hintText: hint,
           prefixIcon: Icon(icon, color: colors.azulAlba.withOpacity(0.6)),
@@ -293,19 +310,39 @@ class _EditarTarefaScreenState extends State<EditarTarefaScreen> {
                 _buildTagButton('Faculdade', 'faculdade', colors),
               ],
             ),
-            if (_tagSelecionada != null) ...[
-              const SizedBox(height: 15),
-              DropdownButtonFormField<MetaDto>(
-                value: _metaSelecionada,
-                hint: const Text('Selecione a meta'),
-                items: _metasFiltradas.map((m) => DropdownMenuItem(value: m, child: Text(m.tituloMeta))).toList(),
-                onChanged: (v) => setState(() => _metaSelecionada = v),
-                decoration: InputDecoration(
-                  filled: true,
-                  fillColor: Colors.white,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            if (_carregandoMetas) ...[
+              const SizedBox(height: 16),
+              const Center(
+                child: SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(),
                 ),
               ),
+            ] else if (_tagSelecionada != null) ...[
+              const SizedBox(height: 15),
+              if (_metasFiltradas.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8.0),
+                  child: Text(
+                    'Nenhuma meta encontrada para esta categoria.',
+                    style: TextStyle(color: colors.greyThree),
+                  ),
+                )
+              else
+                DropdownButtonFormField<MetaDto>(
+                  value: _metaSelecionada,
+                  hint: const Text('Selecione a meta'),
+                  items: _metasFiltradas
+                      .map((m) => DropdownMenuItem(value: m, child: Text(m.tituloMeta)))
+                      .toList(),
+                  onChanged: (v) => setState(() => _metaSelecionada = v),
+                  decoration: InputDecoration(
+                    filled: true,
+                    fillColor: Colors.white,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
             ]
           ]
         ],

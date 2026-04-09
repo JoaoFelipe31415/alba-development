@@ -3,7 +3,6 @@ import 'package:alba/domain/dto/tarefa_dto.dart';
 import 'package:alba/ui/tarefas/criar_tarefa_screen.dart';
 import 'package:alba/ui/tarefas/editar_tarefa_screen.dart';
 import 'package:alba/ui/design_system/theme/app_colors.dart';
-import 'package:alba/ui/design_system/widgets/tarefa_card.dart';
 import 'package:flutter/material.dart';
 
 class GerenciamentoTarefasScreen extends StatefulWidget {
@@ -17,27 +16,45 @@ class GerenciamentoTarefasScreen extends StatefulWidget {
 class _GerenciamentoTarefasScreenState
     extends State<GerenciamentoTarefasScreen> {
   final List<String> _meses = [
-    'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+    'Janeiro',
+    'Fevereiro',
+    'Março',
+    'Abril',
+    'Maio',
+    'Junho',
+    'Julho',
+    'Agosto',
+    'Setembro',
+    'Outubro',
+    'Novembro',
+    'Dezembro',
   ];
+
   String _mesSelecionado = 'Abril';
-  
-  String _mesDoCalendario = 'Abril'; 
-  int _diaSelecionado = DateTime.now().day;   
-  int _offsetDias = 0; 
-  
+  String _mesDoCalendario = 'Abril';
+  int _offsetDias = 0;
+
   final TarefasRepository _tarefasRepository = TarefasRepository();
   final TextEditingController _buscaController = TextEditingController();
 
   String _busca = '';
+  DateTime _dataSelecionada = DateTime.now();
+
+  // CHECK SOMENTE NO FRONT
+  final Map<String, bool> _statusLocalConcluido = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _mesDoCalendario = _meses[_dataSelecionada.month - 1];
+    _mesSelecionado = _meses[_dataSelecionada.month - 1];
+  }
 
   @override
   void dispose() {
     _buscaController.dispose();
     super.dispose();
   }
-
-  // --- FUNÇÕES DE AÇÃO ---
 
   Future<void> _confirmarExclusao(TarefaDto tarefa) async {
     final confirmar = await showDialog<bool>(
@@ -58,8 +75,12 @@ class _GerenciamentoTarefasScreenState
                 backgroundColor: colors.primaryColor,
                 elevation: 0,
               ),
-              child: Text('Excluir',
-                style: TextStyle(color: colors.whiteColor, fontWeight: FontWeight.bold),
+              child: Text(
+                'Excluir',
+                style: TextStyle(
+                  color: colors.whiteColor,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ],
@@ -70,8 +91,8 @@ class _GerenciamentoTarefasScreenState
     if (confirmar == true && tarefa.id != null) {
       try {
         await _tarefasRepository.excluirTarefa(tarefa.id!);
-        setState(() {});
         if (!mounted) return;
+        setState(() {});
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Tarefa excluída com sucesso.')),
         );
@@ -85,56 +106,270 @@ class _GerenciamentoTarefasScreenState
   }
 
   void _mostrarOpcoesTarefa(TarefaDto tarefa) {
-  showModalBottomSheet(
-    context: context,
-    // Adicione isso para garantir que o fundo do modal acompanhe o design
-    backgroundColor: Colors.white, 
-    shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-    builder: (context) {
-      final appColors = Theme.of(context).extension<AppColors>()!;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        final appColors = Theme.of(context).extension<AppColors>()!;
 
-      return SafeArea(
-        child: Wrap(
-          children: [
-            Center(
-              child: Container(
-                margin: const EdgeInsets.only(top: 10, bottom: 5),
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
-                  borderRadius: BorderRadius.circular(10),
+        return SafeArea(
+          child: Wrap(
+            children: [
+              Center(
+                child: Container(
+                  margin: const EdgeInsets.only(top: 10, bottom: 5),
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ),
+              ListTile(
+                leading: Icon(Icons.edit, color: appColors.azulAlba),
+                title: const Text(
+                  'Editar',
+                  style: TextStyle(fontWeight: FontWeight.w500),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => EditarTarefaScreen(tarefa: tarefa),
+                    ),
+                  );
+                },
+              ),
+              ListTile(
+                leading: Icon(Icons.delete, color: appColors.primaryColor),
+                title: const Text(
+                  'Excluir',
+                  style: TextStyle(fontWeight: FontWeight.w500),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  _confirmarExclusao(tarefa);
+                },
+              ),
+              const SizedBox(height: 10),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  bool _estaConcluidaLocal(TarefaDto tarefa) {
+    if (tarefa.id == null) return tarefa.status.toLowerCase() == 'concluida';
+
+    return _statusLocalConcluido[tarefa.id!] ??
+        (tarefa.status.toLowerCase() == 'concluida');
+  }
+
+  void _toggleStatusLocal(TarefaDto tarefa) {
+    if (tarefa.id == null) return;
+
+    setState(() {
+      final statusAtual = _estaConcluidaLocal(tarefa);
+      _statusLocalConcluido[tarefa.id!] = !statusAtual;
+    });
+  }
+
+  void _toggleStatusTarefa(TarefaDto tarefa) {
+    _toggleStatusLocal(tarefa);
+  }
+
+  String _nomeDiaInterno(DateTime data) {
+    switch (data.weekday) {
+      case DateTime.monday:
+        return 'segunda';
+      case DateTime.tuesday:
+        return 'terca';
+      case DateTime.wednesday:
+        return 'quarta';
+      case DateTime.thursday:
+        return 'quinta';
+      case DateTime.friday:
+        return 'sexta';
+      case DateTime.saturday:
+        return 'sabado';
+      case DateTime.sunday:
+        return 'domingo';
+      default:
+        return '';
+    }
+  }
+
+  List<TarefaDto> _filtrarTarefasDoDiaSelecionado(List<TarefaDto> tarefas) {
+    final diaSelecionado = _nomeDiaInterno(_dataSelecionada);
+
+    return tarefas.where((tarefa) {
+      final bateDia = tarefa.diasRealizacao
+          .map((d) => d.toLowerCase())
+          .contains(diaSelecionado);
+
+      final naoConcluida = !_estaConcluidaLocal(tarefa);
+
+      return bateDia && naoConcluida;
+    }).toList();
+  }
+
+  bool _mesmoDia(DateTime a, DateTime b) {
+    return a.year == b.year && a.month == b.month && a.day == b.day;
+  }
+
+  String _formatarTag(String? tag) {
+    if (tag == null || tag.isEmpty) return '';
+    final normalized = tag.toLowerCase();
+    if (normalized == 'negocio') return 'Negócio';
+    if (normalized == 'faculdade') return 'Faculdade';
+    return tag[0].toUpperCase() + tag.substring(1);
+  }
+
+  Color _corTag(String? tag, AppColors colors) {
+    if (tag == null || tag.isEmpty) return colors.greyThree;
+    return tag.toLowerCase() == 'negocio'
+        ? colors.neonGreen
+        : colors.primaryColor;
+  }
+
+  Widget _buildDiaBolinha(
+    String letra,
+    String dia,
+    TarefaDto tarefa,
+    AppColors colors,
+  ) {
+    final selecionado = tarefa.diasRealizacao
+        .map((d) => d.toLowerCase())
+        .contains(dia.toLowerCase());
+
+    return Container(
+      width: 34,
+      height: 34,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: selecionado ? colors.neonGreen : colors.whiteColor,
+        shape: BoxShape.circle,
+        border: Border.all(color: colors.neonGreen, width: 2),
+      ),
+      child: Text(
+        letra,
+        style: TextStyle(
+          color: selecionado ? colors.whiteColor : colors.azulAlba,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHojeCard(TarefaDto tarefa, AppColors colors) {
+    final concluida = _estaConcluidaLocal(tarefa);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: colors.azulAlba,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.10),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              InkWell(
+                onTap: () => _toggleStatusTarefa(tarefa),
+                child: Container(
+                  width: 28,
+                  height: 28,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: colors.neonGreen, width: 2),
+                  ),
+                  child: concluida
+                      ? Icon(Icons.check, color: colors.neonGreen, size: 18)
+                      : null,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  tarefa.tituloTarefa,
+                  style: TextStyle(
+                    color: colors.whiteColor,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    decoration: concluida
+                        ? TextDecoration.lineThrough
+                        : TextDecoration.none,
+                    decorationColor: colors.whiteColor,
+                  ),
+                ),
+              ),
+              IconButton(
+                icon: Icon(Icons.edit, color: colors.neonGreen),
+                onPressed: () async {
+                  await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => EditarTarefaScreen(tarefa: tarefa),
+                    ),
+                  );
+                },
+              ),
+              IconButton(
+                icon: Icon(Icons.delete, color: colors.neonGreen),
+                onPressed: () => _confirmarExclusao(tarefa),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          if (tarefa.tag != null && tarefa.tag!.isNotEmpty)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              decoration: BoxDecoration(
+                color: _corTag(tarefa.tag, colors),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                _formatarTag(tarefa.tag),
+                style: TextStyle(
+                  color: tarefa.tag!.toLowerCase() == 'negocio'
+                      ? colors.backgroundColor
+                      : colors.whiteColor,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
             ),
-            ListTile(
-              leading: Icon(Icons.edit, color: appColors.azulAlba),
-              title: const Text('Editar', style: TextStyle(fontWeight: FontWeight.w500)),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (_) => EditarTarefaScreen(tarefa: tarefa)));
-              },
-            ),
-            ListTile(
-              leading: Icon(Icons.delete, color: appColors.primaryColor),
-              title: const Text('Excluir', style: TextStyle(fontWeight: FontWeight.w500)),
-              onTap: () {
-                Navigator.pop(context);
-                _confirmarExclusao(tarefa);
-              },
-            ),
-            // Adiciona um respiro extra no final para não grudar na borda
-            const SizedBox(height: 10), 
-          ],
-        ),
-      );
-    },
-  );
-}
+          const SizedBox(height: 14),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _buildDiaBolinha('S', 'segunda', tarefa, colors),
+              _buildDiaBolinha('T', 'terca', tarefa, colors),
+              _buildDiaBolinha('Q', 'quarta', tarefa, colors),
+              _buildDiaBolinha('Q', 'quinta', tarefa, colors),
+              _buildDiaBolinha('S', 'sexta', tarefa, colors),
+              _buildDiaBolinha('S', 'sabado', tarefa, colors),
+              _buildDiaBolinha('D', 'domingo', tarefa, colors),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -151,7 +386,11 @@ class _GerenciamentoTarefasScreenState
         ),
         title: Text(
           'Gerenciamento de Tarefas',
-          style: TextStyle(color: colors.azulAlba, fontWeight: FontWeight.bold, fontSize: 20),
+          style: TextStyle(
+            color: colors.azulAlba,
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+          ),
         ),
       ),
       floatingActionButton: FloatingActionButton(
@@ -185,7 +424,9 @@ class _GerenciamentoTarefasScreenState
                           icon: const Icon(Icons.clear),
                         )
                       : null,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(18)),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(18),
+                  ),
                 ),
               ),
               const SizedBox(height: 24),
@@ -193,16 +434,44 @@ class _GerenciamentoTarefasScreenState
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   IconButton(
-                    icon: Icon(Icons.arrow_back_ios, size: 18, color: colors.azulAlba),
-                    onPressed: () => setState(() => _offsetDias -= 1),
+                    icon: Icon(
+                      Icons.arrow_back_ios,
+                      size: 18,
+                      color: colors.azulAlba,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _offsetDias -= 1;
+                        final base = DateTime.now().add(
+                          Duration(days: _offsetDias),
+                        );
+                        _mesDoCalendario = _meses[base.month - 1];
+                      });
+                    },
                   ),
                   Text(
-                    "$_mesDoCalendario 2026",
-                    style: TextStyle(color: colors.azulAlba, fontSize: 22, fontWeight: FontWeight.bold),
+                    "$_mesDoCalendario ${DateTime.now().add(Duration(days: _offsetDias)).year}",
+                    style: TextStyle(
+                      color: colors.azulAlba,
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   IconButton(
-                    icon: Icon(Icons.arrow_forward_ios, size: 18, color: colors.azulAlba),
-                    onPressed: () => setState(() => _offsetDias += 1),
+                    icon: Icon(
+                      Icons.arrow_forward_ios,
+                      size: 18,
+                      color: colors.azulAlba,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _offsetDias += 1;
+                        final base = DateTime.now().add(
+                          Duration(days: _offsetDias),
+                        );
+                        _mesDoCalendario = _meses[base.month - 1];
+                      });
+                    },
                   ),
                 ],
               ),
@@ -214,35 +483,44 @@ class _GerenciamentoTarefasScreenState
               const SizedBox(height: 32),
               Text(
                 "Hoje",
-                style: TextStyle(color: colors.azulAlba, fontSize: 28, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  color: colors.azulAlba,
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: 16),
               StreamBuilder<List<TarefaDto>>(
-                stream: _tarefasRepository.buscarTarefasStream(_busca, mes: null, dia: _diaSelecionado),
+                stream: _tarefasRepository.buscarTarefasStream(
+                  _busca,
+                  mes: null,
+                  dia: null,
+                ),
                 builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
+                  if (snapshot.connectionState == ConnectionState.waiting &&
+                      !snapshot.hasData) {
                     return const Center(child: CircularProgressIndicator());
                   }
+
                   final tarefas = snapshot.data ?? [];
-                  if (tarefas.isEmpty) {
-                    return Center(child: Text('Nenhuma tarefa para este dia.', style: TextStyle(color: colors.greyFive)));
+                  final tarefasDoDia = _filtrarTarefasDoDiaSelecionado(tarefas);
+
+                  if (tarefasDoDia.isEmpty) {
+                    return Center(
+                      child: Text(
+                        'Nenhuma tarefa para este dia.',
+                        style: TextStyle(color: colors.greyFive),
+                      ),
+                    );
                   }
+
                   return ListView.separated(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
-                    itemCount: tarefas.length,
+                    itemCount: tarefasDoDia.length,
                     separatorBuilder: (_, __) => const SizedBox(height: 14),
                     itemBuilder: (context, index) {
-                      return TarefaCard(
-                        tarefa: tarefas[index],
-                        onEdit: () async {
-                          await Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (_) => EditarTarefaScreen(tarefa: tarefas[index])),
-                          );
-                        },
-                        onDelete: () => _confirmarExclusao(tarefas[index]),
-                      );
+                      return _buildHojeCard(tarefasDoDia[index], colors);
                     },
                   );
                 },
@@ -250,25 +528,44 @@ class _GerenciamentoTarefasScreenState
               const SizedBox(height: 40),
               Row(
                 children: [
-                  Text("Tarefas", style: TextStyle(color: colors.azulAlba, fontSize: 26, fontWeight: FontWeight.bold)),
+                  Text(
+                    "Tarefas",
+                    style: TextStyle(
+                      color: colors.azulAlba,
+                      fontSize: 26,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                   const SizedBox(width: 20),
                   _buildFiltroMes(colors),
                 ],
               ),
               const SizedBox(height: 20),
               StreamBuilder<List<TarefaDto>>(
-                stream: _tarefasRepository.buscarTarefasStream(_busca, mes: _mesSelecionado, dia: null),
+                stream: _tarefasRepository.buscarTarefasStream(
+                  _busca,
+                  mes: _mesSelecionado,
+                  dia: null,
+                ),
                 builder: (context, snapshot) {
                   if (!snapshot.hasData) return const SizedBox();
+
                   final tarefas = snapshot.data!;
                   if (tarefas.isEmpty) {
-                    return Center(child: Text("Nenhuma tarefa neste mês.", style: TextStyle(color: colors.greyFive)));
+                    return Center(
+                      child: Text(
+                        "Nenhuma tarefa neste mês.",
+                        style: TextStyle(color: colors.greyFive),
+                      ),
+                    );
                   }
+
                   return ListView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
                     itemCount: tarefas.length,
-                    itemBuilder: (context, index) => _buildTimelineTask(tarefas[index], colors),
+                    itemBuilder: (context, index) =>
+                        _buildTimelineTask(tarefas[index], colors),
                   );
                 },
               ),
@@ -280,18 +577,24 @@ class _GerenciamentoTarefasScreenState
     );
   }
 
-  // --- WIDGETS AUXILIARES ---
-
   Widget _buildFiltroMes(AppColors colors) {
     return PopupMenuButton<String>(
       onSelected: (String novoMes) => setState(() => _mesSelecionado = novoMes),
-      itemBuilder: (context) => _meses.map((mes) => PopupMenuItem(value: mes, child: Text(mes))).toList(),
+      itemBuilder: (context) => _meses
+          .map((mes) => PopupMenuItem(value: mes, child: Text(mes)))
+          .toList(),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-        decoration: BoxDecoration(color: colors.neonGreen, borderRadius: BorderRadius.circular(10)),
+        decoration: BoxDecoration(
+          color: colors.neonGreen,
+          borderRadius: BorderRadius.circular(10),
+        ),
         child: Row(
           children: [
-            Text(_mesSelecionado, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+            Text(
+              _mesSelecionado,
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+            ),
             Icon(Icons.keyboard_arrow_down, size: 18, color: colors.azulAlba),
           ],
         ),
@@ -301,35 +604,62 @@ class _GerenciamentoTarefasScreenState
 
   List<Widget> _gerarCardsCalendario(AppColors colors) {
     List<Widget> cards = [];
-    DateTime hoje = DateTime.now().add(Duration(days: _offsetDias));
+    DateTime base = DateTime.now().add(Duration(days: _offsetDias));
     List<String> diasSemana = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sab"];
 
     for (int i = 0; i < 7; i++) {
-      DateTime dataCard = hoje.add(Duration(days: i));
+      DateTime dataCard = base.add(Duration(days: i));
       String diaNome = diasSemana[dataCard.weekday % 7];
       String diaNum = dataCard.day.toString().padLeft(2, '0');
-      bool selecionado = _diaSelecionado == dataCard.day;
-      cards.add(_buildCardCalendario(diaNome, diaNum, selecionado, colors));
+      bool selecionado = _mesmoDia(_dataSelecionada, dataCard);
+
+      cards.add(
+        _buildCardCalendario(diaNome, diaNum, selecionado, colors, dataCard),
+      );
     }
     return cards;
   }
 
-  Widget _buildCardCalendario(String diaSemana, String numero, bool selecionado, AppColors colors) {
+  Widget _buildCardCalendario(
+    String diaSemana,
+    String numero,
+    bool selecionado,
+    AppColors colors,
+    DateTime dataCompleta,
+  ) {
     return GestureDetector(
-      onTap: () => setState(() => _diaSelecionado = int.parse(numero)),
+      onTap: () => setState(() {
+        _dataSelecionada = dataCompleta;
+        _mesDoCalendario = _meses[dataCompleta.month - 1];
+      }),
       child: Container(
         margin: const EdgeInsets.only(right: 12),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
           color: selecionado ? colors.neonGreen : colors.whiteColor,
           borderRadius: BorderRadius.circular(15),
-          border: Border.all(color: selecionado ? colors.neonGreen : colors.greyThree),
+          border: Border.all(
+            color: selecionado ? colors.neonGreen : colors.greyThree,
+          ),
         ),
         child: Column(
           children: [
-            Text(diaSemana, style: TextStyle(color: selecionado ? colors.whiteColor : colors.greyThree, fontSize: 14)),
+            Text(
+              diaSemana,
+              style: TextStyle(
+                color: selecionado ? colors.whiteColor : colors.greyThree,
+                fontSize: 14,
+              ),
+            ),
             const SizedBox(height: 4),
-            Text(numero, style: TextStyle(color: selecionado ? colors.whiteColor : colors.azulAlba, fontSize: 18, fontWeight: FontWeight.bold)),
+            Text(
+              numero,
+              style: TextStyle(
+                color: selecionado ? colors.whiteColor : colors.azulAlba,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ],
         ),
       ),
@@ -337,13 +667,21 @@ class _GerenciamentoTarefasScreenState
   }
 
   Widget _buildTimelineTask(TarefaDto tarefa, AppColors colors) {
+    final concluida = _estaConcluidaLocal(tarefa);
+
     return IntrinsicHeight(
       child: Row(
         children: [
           Column(
             children: [
-              Text(tarefa.dataCriacao.day.toString().padLeft(2, '0'),
-                  style: TextStyle(color: colors.greyThree, fontWeight: FontWeight.bold, fontSize: 16)),
+              Text(
+                tarefa.dataCriacao.day.toString().padLeft(2, '0'),
+                style: TextStyle(
+                  color: colors.greyThree,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
               const SizedBox(height: 4),
               Expanded(child: Container(width: 2, color: colors.greyThree)),
             ],
@@ -356,13 +694,19 @@ class _GerenciamentoTarefasScreenState
               decoration: BoxDecoration(
                 color: colors.whiteColor,
                 borderRadius: BorderRadius.circular(18),
-                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))],
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
               child: Row(
                 children: [
                   Checkbox(
-                    value: false,
-                    onChanged: (v) {},
+                    value: concluida,
+                    onChanged: (_) => _toggleStatusTarefa(tarefa),
                     shape: const CircleBorder(),
                     activeColor: colors.neonGreen,
                     side: BorderSide(color: colors.azulAlba, width: 2),
@@ -372,10 +716,25 @@ class _GerenciamentoTarefasScreenState
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(tarefa.tituloTarefa, style: TextStyle(fontWeight: FontWeight.bold, color: colors.azulAlba, fontSize: 15)),
+                        Text(
+                          tarefa.tituloTarefa,
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: colors.azulAlba,
+                            fontSize: 15,
+                            decoration: concluida
+                                ? TextDecoration.lineThrough
+                                : TextDecoration.none,
+                          ),
+                        ),
                         const SizedBox(height: 4),
-                        Text("Meta: ${tarefa.tituloMeta ?? 'Sem Meta'}",
-                            style: TextStyle(fontSize: 12, color: colors.azulAlba.withOpacity(0.7))),
+                        Text(
+                          "Meta: ${tarefa.tituloMeta ?? 'Sem Meta'}",
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: colors.azulAlba.withOpacity(0.7),
+                          ),
+                        ),
                       ],
                     ),
                   ),
