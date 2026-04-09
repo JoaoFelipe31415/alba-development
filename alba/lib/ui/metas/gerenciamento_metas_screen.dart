@@ -1,8 +1,6 @@
 import 'package:alba/config/dependencies.dart';
 import 'package:alba/data/repositories/metas_repository.dart';
 import 'package:alba/domain/dto/meta_dto.dart';
-import 'package:alba/domain/validators/meta_validator.dart';
-import 'package:alba/ui/design_system/constants/spaces.dart';
 import 'package:alba/ui/design_system/theme/app_colors.dart';
 import 'package:alba/ui/metas/criar_meta_screen.dart';
 import 'package:alba/ui/metas/editar_meta_screen.dart';
@@ -20,6 +18,43 @@ class _GeraciamentoMetasScreenState extends State<GeraciamentoMetasScreen> {
   final metasRepository = injector.get<MetasRepository>();
   final searchController = TextEditingController();
   String searchQuery = '';
+  String _mesSelecionado = _getMesAtual();
+
+  static String _getMesAtual() {
+    final meses = [
+      'Janeiro',
+      'Fevereiro',
+      'Março',
+      'Abril',
+      'Maio',
+      'Junho',
+      'Julho',
+      'Agosto',
+      'Setembro',
+      'Outubro',
+      'Novembro',
+      'Dezembro',
+    ];
+    return meses[DateTime.now().month - 1];
+  }
+
+  int _getMesNumero(String mes) {
+    final meses = [
+      'Janeiro',
+      'Fevereiro',
+      'Março',
+      'Abril',
+      'Maio',
+      'Junho',
+      'Julho',
+      'Agosto',
+      'Setembro',
+      'Outubro',
+      'Novembro',
+      'Dezembro',
+    ];
+    return meses.indexOf(mes) + 1;
+  }
 
   @override
   void dispose() {
@@ -108,63 +143,140 @@ class _GeraciamentoMetasScreenState extends State<GeraciamentoMetasScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: context.colors.backgroundColor,
+      backgroundColor: context.colors.whiteColor,
       appBar: AppBar(
-        backgroundColor: context.colors.backgroundColor,
+        backgroundColor: context.colors.whiteColor,
         elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Color(0xFF0532AF)),
+          onPressed: () => Navigator.pop(context),
+        ),
         title: Text(
-          'Metas',
-          style: TextStyle(
-            color: context.colors.whiteColor,
+          'Gerenciamento de Metas',
+          style: const TextStyle(
+            color: Color(0xFF0532AF),
             fontWeight: FontWeight.bold,
-            fontSize: Spaces.xl,
+            fontSize: 18,
           ),
         ),
       ),
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.all(Spaces.l),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: const Color(0xFF84F41E),
+                  ),
+                  child: const Icon(Icons.add, color: Colors.white, size: 24),
+                ),
+                const SizedBox(width: 12),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    GestureDetector(
+                      onTap: _navigateToCriarMeta,
+                      child: const Text(
+                        'Criar Meta',
+                        style: TextStyle(
+                          color: Color(0xFF0532AF),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: TextField(
               controller: searchController,
-              style: TextStyle(color: context.colors.whiteColor),
+              style: const TextStyle(color: Color(0xFF333333)),
               onChanged: (value) {
                 setState(() {
                   searchQuery = value;
                 });
               },
               decoration: InputDecoration(
-                hintText: 'Filtrar pelo título da meta',
-                hintStyle: TextStyle(color: context.colors.textPrimaryColor),
-                prefixIcon: Icon(
-                  Icons.search,
-                  color: context.colors.textPrimaryColor,
-                ),
-                suffixIcon: searchQuery.isNotEmpty
-                    ? IconButton(
-                        icon: Icon(
-                          Icons.close,
-                          color: context.colors.textPrimaryColor,
-                        ),
-                        onPressed: () {
-                          searchController.clear();
-                          setState(() {
-                            searchQuery = '';
-                          });
-                        },
-                      )
-                    : null,
-                filled: true,
-                fillColor: context.colors.greyOne,
+                hintText: 'Buscar Meta...',
+                hintStyle: const TextStyle(color: Color(0xFFABABAB)),
+                prefixIcon: const Icon(Icons.search, color: Color(0xFFABABAB)),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide.none,
+                  borderRadius: BorderRadius.circular(24),
+                  borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
                 ),
+                filled: true,
+                fillColor: const Color(0xFFFAFAFA),
                 contentPadding: const EdgeInsets.symmetric(
-                  vertical: Spaces.m,
-                  horizontal: Spaces.l,
+                  vertical: 12,
+                  horizontal: 16,
                 ),
               ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              children: [
+                const Text(
+                  'Metas Atuais',
+                  style: TextStyle(
+                    color: Color(0xFF0532AF),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+                const Spacer(),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF84F41E),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: DropdownButton<String>(
+                    value: _mesSelecionado,
+                    items:
+                        [
+                              'Janeiro',
+                              'Fevereiro',
+                              'Março',
+                              'Abril',
+                              'Maio',
+                              'Junho',
+                              'Julho',
+                              'Agosto',
+                              'Setembro',
+                              'Outubro',
+                              'Novembro',
+                              'Dezembro',
+                            ]
+                            .map(
+                              (mes) => DropdownMenuItem(
+                                value: mes,
+                                child: Text(mes),
+                              ),
+                            )
+                            .toList(),
+                    onChanged: (mes) {
+                      if (mes != null) {
+                        setState(() => _mesSelecionado = mes);
+                      }
+                    },
+                    underline: const SizedBox(),
+                  ),
+                ),
+              ],
             ),
           ),
           Expanded(
@@ -186,9 +298,14 @@ class _GeraciamentoMetasScreenState extends State<GeraciamentoMetasScreen> {
                   );
                 }
 
-                final metas = snapshot.data ?? [];
+                final todasMetas = snapshot.data ?? [];
+                final metasDoMes = todasMetas.where((meta) {
+                  return meta.prazo.month == _getMesNumero(_mesSelecionado);
+                }).toList();
 
-                if (metas.isEmpty) {
+                final totalMetas = metasDoMes.length;
+
+                if (todasMetas.isEmpty) {
                   return Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -198,153 +315,187 @@ class _GeraciamentoMetasScreenState extends State<GeraciamentoMetasScreen> {
                           size: 64,
                           color: context.colors.textPrimaryColor,
                         ),
-                        const SizedBox(height: Spaces.l),
-                        Text(
+                        const SizedBox(height: 16),
+                        const Text(
                           'Nenhuma meta encontrada',
                           style: TextStyle(
-                            color: context.colors.textPrimaryColor,
-                            fontSize: Spaces.l,
+                            color: Color(0xFF888888),
+                            fontSize: 16,
                           ),
-                        ),
-                        const SizedBox(height: Spaces.m),
-                        Text(
-                          'Crie sua primeira meta clicando em Criar Meta',
-                          style: TextStyle(
-                            color: context.colors.greyThree,
-                            fontSize: Spaces.m,
-                          ),
-                          textAlign: TextAlign.center,
                         ),
                       ],
                     ),
                   );
                 }
 
-                return ListView.builder(
-                  padding: const EdgeInsets.all(Spaces.l),
-                  itemCount: metas.length,
-                  itemBuilder: (context, index) {
-                    final meta = metas[index];
-                    final diasRestantes = meta.prazo
-                        .difference(DateTime.now())
-                        .inDays;
-                    final progresso = diasRestantes > 0 ? diasRestantes : 0;
-
-                    return Card(
-                      color: context.colors.greyOne,
-                      margin: const EdgeInsets.only(bottom: Spaces.l),
-                      child: Padding(
-                        padding: const EdgeInsets.all(Spaces.l),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        meta.tituloMeta,
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: TextStyle(
-                                          color: context.colors.whiteColor,
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: Spaces.l,
-                                        ),
-                                      ),
-                                      const SizedBox(height: Spaces.s),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: Spaces.s,
-                                          vertical: Spaces.xs,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: meta.tag == 'negocio'
-                                              ? context.colors.focusColor
-                                              : context.colors.primaryColor,
-                                          borderRadius: BorderRadius.circular(
-                                            4,
-                                          ),
-                                        ),
-                                        child: Text(
-                                          meta.tag == 'negocio'
-                                              ? 'Negócio'
-                                              : 'Faculdade',
-                                          style: TextStyle(
-                                            color: context.colors.whiteColor,
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
+                return SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (metasDoMes.isNotEmpty) ...[
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF0532AF),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.star,
+                                color: Color(0xFFFFD700),
+                                size: 32,
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  'Existem ${metasDoMes.length} Metas para o\nMês de $_mesSelecionado',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
                                   ),
                                 ),
-                                Row(
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          '${metasDoMes.length} de $totalMetas',
+                          style: const TextStyle(
+                            color: Color(0xFF0532AF),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: LinearProgressIndicator(
+                            value: totalMetas == 0
+                                ? 0
+                                : (metasDoMes.length / totalMetas),
+                            minHeight: 8,
+                            backgroundColor: const Color(0xFFDDD9D9),
+                            valueColor: const AlwaysStoppedAnimation<Color>(
+                              Color(0xFF84F41E),
+                            ),
+                          ),
+                        ),
+                        SizedBox(
+                          width: double.infinity,
+                          child: Text(
+                            '${totalMetas > 0 ? ((metasDoMes.length / totalMetas) * 100).toInt() : 0}%',
+                            textAlign: TextAlign.right,
+                            style: const TextStyle(
+                              color: Color(0xFF84F41E),
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                      ],
+                      ...metasDoMes.map((meta) {
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF0D47A1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 24,
+                                height: 24,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: Colors.white,
+                                    width: 2,
+                                  ),
+                                  color: Colors.transparent,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    IconButton(
-                                      icon: Icon(
-                                        Icons.edit,
-                                        color: context.colors.focusColor,
+                                    Text(
+                                      meta.tituloMeta,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w500,
+                                        fontSize: 14,
                                       ),
-                                      onPressed: () {
-                                        _navigateToEditarMeta(meta);
-                                      },
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
                                     ),
-                                    IconButton(
-                                      icon: Icon(
-                                        Icons.delete,
-                                        color: context.colors.errorColor,
+                                    const SizedBox(height: 6),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 4,
                                       ),
-                                      onPressed: () =>
-                                          _excluirMeta(meta.id!, meta),
+                                      decoration: BoxDecoration(
+                                        color: meta.tag == 'negocio'
+                                            ? const Color(0xFF84F41E)
+                                            : const Color(0xFF84F41E),
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Text(
+                                        meta.tag == 'negocio'
+                                            ? 'Negócio'
+                                            : 'Faculdade',
+                                        style: const TextStyle(
+                                          color: Color(0xFF0532AF),
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 11,
+                                        ),
+                                      ),
                                     ),
                                   ],
                                 ),
-                              ],
-                            ),
-                            const SizedBox(height: Spaces.l),
-                            Text(
-                              'Prazo: ${MetaValidator.formatDate(meta.prazo)}',
-                              style: TextStyle(
-                                color: context.colors.textPrimaryColor,
-                                fontSize: 12,
                               ),
-                            ),
-                            const SizedBox(height: Spaces.s),
-                            LinearProgressIndicator(
-                              value: progresso > 0 ? 1.0 : 0.0,
-                              backgroundColor: context.colors.greyTwo,
-                              valueColor: AlwaysStoppedAnimation(
-                                diasRestantes > 7
-                                    ? context.colors.successColor
-                                    : diasRestantes > 0
-                                    ? context.colors.alert
-                                    : context.colors.errorColor,
+                              Column(
+                                children: [
+                                  IconButton(
+                                    icon: const Icon(
+                                      Icons.delete,
+                                      color: Color(0xFF84F41E),
+                                      size: 20,
+                                    ),
+                                    onPressed: () =>
+                                        _excluirMeta(meta.id!, meta),
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  IconButton(
+                                    icon: const Icon(
+                                      Icons.edit,
+                                      color: Color(0xFF84F41E),
+                                      size: 20,
+                                    ),
+                                    onPressed: () =>
+                                        _navigateToEditarMeta(meta),
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(),
+                                  ),
+                                ],
                               ),
-                            ),
-                            const SizedBox(height: Spaces.s),
-                            Text(
-                              diasRestantes > 0
-                                  ? '$diasRestantes dias restantes'
-                                  : 'Prazo expirado',
-                              style: TextStyle(
-                                color: diasRestantes > 0
-                                    ? context.colors.successColor
-                                    : context.colors.errorColor,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
+                            ],
+                          ),
+                        );
+                      }).toList(),
+                      const SizedBox(height: 20),
+                    ],
+                  ),
                 );
               },
             ),
@@ -352,9 +503,9 @@ class _GeraciamentoMetasScreenState extends State<GeraciamentoMetasScreen> {
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        backgroundColor: context.colors.primaryColor,
+        backgroundColor: const Color(0xFF84F41E),
         onPressed: _navigateToCriarMeta,
-        child: Icon(Icons.add, color: context.colors.whiteColor),
+        child: const Icon(Icons.add, color: Colors.white),
       ),
     );
   }
