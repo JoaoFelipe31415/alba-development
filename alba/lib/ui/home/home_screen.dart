@@ -1,11 +1,9 @@
 import 'package:alba/config/dependencies.dart';
 import 'package:alba/data/repositories/auth_repository.dart';
-import 'package:alba/data/repositories/metas_repository.dart';
-import 'package:alba/domain/dto/meta_dto.dart';
+import 'package:alba/data/repositories/tarefas_repository.dart';
+import 'package:alba/domain/dto/tarefa_dto.dart';
 import 'package:alba/ui/design_system/theme/app_colors.dart';
 import 'package:alba/ui/login/login_screen.dart';
-import 'package:alba/ui/metas/criar_meta_screen.dart';
-import 'package:alba/ui/metas/editar_meta_screen.dart';
 import 'package:alba/ui/metas/gerenciamento_metas_screen.dart';
 import 'package:alba/ui/tarefas/gerenciamento_tarefas_screen.dart';
 import 'package:flutter/material.dart';
@@ -33,7 +31,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: context.colors.backgroundColor,
+      backgroundColor: context.colors.whiteColor,
       body: _screens[_selectedIndex],
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
@@ -42,14 +40,17 @@ class _HomeScreenState extends State<HomeScreen> {
             _selectedIndex = index;
           });
         },
-        backgroundColor: context.colors.greyOne,
-        selectedItemColor: context.colors.primaryColor,
-        unselectedItemColor: context.colors.textPrimaryColor,
+        backgroundColor: context.colors.azulAlba,
+        selectedItemColor: context.colors.whiteColor,
+        unselectedItemColor: Color(0xFFB3CCFF),
         type: BottomNavigationBarType.fixed,
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Início'),
           BottomNavigationBarItem(icon: Icon(Icons.flag), label: 'Metas'),
-          BottomNavigationBarItem(icon: Icon(Icons.check_circle), label: 'Tarefas',),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.check_circle),
+            label: 'Tarefas',
+          ),
           BottomNavigationBarItem(
             icon: Icon(Icons.bar_chart),
             label: 'Progresso',
@@ -74,286 +75,375 @@ class InicioScreen extends StatefulWidget {
 
 class _InicioScreenState extends State<InicioScreen> {
   final authRepository = injector.get<AuthRepository>();
-  final metasRepository = injector.get<MetasRepository>();
+  final tarefasRepository = TarefasRepository();
+
+  String get _userName =>
+      authRepository.currentUser?.displayName ?? 'Estudante';
+
+  String _getGreeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) {
+      return 'Bom dia';
+    } else if (hour < 18) {
+      return 'Boa tarde';
+    } else {
+      return 'Boa noite';
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: context.colors.backgroundColor,
-      appBar: AppBar(
-        backgroundColor: context.colors.backgroundColor,
-        elevation: 0,
-        title: Text(
-          'Gerenciamento de Metas',
-          style: TextStyle(
-            color: context.colors.whiteColor,
-            fontWeight: FontWeight.bold,
-            fontSize: 20,
+      backgroundColor: context.colors.whiteColor,
+      body: SafeArea(
+        child: StreamBuilder<List<TarefaDto>>(
+          stream: tarefasRepository.buscarTarefasStream(
+            '',
+            dia: DateTime.now().day,
           ),
-        ),
-        actions: [
-          PopupMenuButton(
-            color: context.colors.greyOne,
-            itemBuilder: (context) => [
-              PopupMenuItem(
-                child: Text(
-                  'Sair',
-                  style: TextStyle(color: context.colors.errorColor),
-                ),
-                onTap: () {
-                  authRepository.logout();
-                  Navigator.of(context).pushReplacement(
-                    MaterialPageRoute(
-                      builder: (context) => const LoginScreen(),
-                    ),
-                  );
-                },
-              ),
-            ],
-            child: Icon(Icons.more_vert, color: context.colors.whiteColor),
-          ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.of(context)
-              .push(
-                MaterialPageRoute(
-                  builder: (context) => const CriarMetaScreen(),
-                ),
-              )
-              .then((_) {
-                if (mounted) {
-                  setState(() {});
-                }
-              });
-        },
-        backgroundColor: context.colors.primaryColor,
-        child: Icon(Icons.add, color: context.colors.whiteColor, size: 32),
-      ),
-      body: StreamBuilder<List<MetaDto>>(
-        stream: metasRepository.obterMetasStream(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(
-              child: CircularProgressIndicator(
-                color: context.colors.primaryColor,
-              ),
-            );
-          }
+          builder: (context, snapshot) {
+            final tarefasHoje = snapshot.data ?? [];
+            final tarefasCompletas = tarefasHoje
+                .where((t) => t.status == 'concluida')
+                .length;
+            final percentualProgresso = tarefasHoje.isEmpty
+                ? 0
+                : ((tarefasCompletas / tarefasHoje.length) * 100).toInt();
 
-          if (snapshot.hasError) {
-            return Center(
-              child: Text(
-                'Erro ao carregar metas',
-                style: TextStyle(color: context.colors.errorColor),
-              ),
-            );
-          }
-
-          final todasAsMetas = snapshot.data ?? [];
-
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Minhas Metas',
-                  style: TextStyle(
-                    color: context.colors.whiteColor,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                if (todasAsMetas.isNotEmpty)
-                  ...todasAsMetas.map((meta) {
-                    return GestureDetector(
-                      onTap: () {
-                        Navigator.of(context)
-                            .push(
-                              MaterialPageRoute(
-                                builder: (context) =>
-                                    EditarMetaScreen(meta: meta),
-                              ),
-                            )
-                            .then((_) {
-                              if (mounted) {
-                                setState(() {});
-                              }
-                            });
-                      },
-                      child: Container(
-                        margin: const EdgeInsets.only(bottom: 16),
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Color(0xFF1E3A8A),
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Row(
+            return SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Container(
-                              width: 48,
-                              height: 48,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: context.colors.whiteColor.withAlpha(
-                                    (255 * 0.4).toInt(),
-                                  ),
-                                  width: 2,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    meta.tituloMeta,
-                                    style: TextStyle(
-                                      color: context.colors.whiteColor,
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 10,
-                                      vertical: 4,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: _getCorTag(meta.tag),
-                                      borderRadius: BorderRadius.circular(6),
-                                    ),
-                                    child: Text(
-                                      _getNomeTag(meta.tag),
-                                      style: TextStyle(
-                                        color: context.colors.backgroundColor,
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Column(
+                            Row(
                               children: [
-                                GestureDetector(
-                                  onTap: () {
-                                    showDialog(
-                                      context: context,
-                                      builder: (context) => AlertDialog(
-                                        backgroundColor: context.colors.greyOne,
-                                        title: Text(
-                                          'Deletar meta?',
-                                          style: TextStyle(
-                                            color: context.colors.whiteColor,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                        content: Text(
-                                          'Tem certeza que deseja deletar esta meta?',
-                                          style: TextStyle(
-                                            color:
-                                                context.colors.textPrimaryColor,
-                                          ),
-                                        ),
-                                        actions: [
-                                          TextButton(
-                                            onPressed: () =>
-                                                Navigator.pop(context),
-                                            child: Text(
-                                              'Cancelar',
-                                              style: TextStyle(
-                                                color:
-                                                    context.colors.focusColor,
-                                              ),
-                                            ),
-                                          ),
-                                          TextButton(
-                                            onPressed: () async {
-                                              try {
-                                                await metasRepository
-                                                    .excluirMeta(meta.id!);
-                                                if (mounted) {
-                                                  Navigator.pop(context);
-                                                  setState(() {});
-                                                }
-                                              } catch (e) {
-                                                if (mounted) {
-                                                  Navigator.pop(context);
-                                                  ScaffoldMessenger.of(
-                                                    context,
-                                                  ).showSnackBar(
-                                                    SnackBar(
-                                                      content: Text(
-                                                        e.toString(),
-                                                      ),
-                                                      backgroundColor: context
-                                                          .colors
-                                                          .errorColor,
-                                                    ),
-                                                  );
-                                                }
-                                              }
-                                            },
-                                            child: Text(
-                                              'Deletar',
-                                              style: TextStyle(
-                                                color:
-                                                    context.colors.errorColor,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    );
-                                  },
-                                  child: Icon(
-                                    Icons.delete,
-                                    color: Colors.green,
-                                    size: 22,
+                                Text(
+                                  '${_getGreeting()}, ${_userName.split(' ').first}!',
+                                  style: TextStyle(
+                                    color: context.colors.azulAlba,
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
                                   ),
                                 ),
-                                const SizedBox(height: 12),
-                                Icon(
-                                  Icons.edit,
-                                  color: Color(0xFF84F41E),
-                                  size: 22,
+                                const SizedBox(width: 8),
+                                const Text(
+                                  '👋',
+                                  style: TextStyle(fontSize: 24),
                                 ),
                               ],
                             ),
                           ],
                         ),
+                        GestureDetector(
+                          onTap: () {
+                            showModalBottomSheet(
+                              context: context,
+                              builder: (context) => Container(
+                                color: context.colors.whiteColor,
+                                child: SafeArea(
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      ListTile(
+                                        leading: Icon(
+                                          Icons.logout,
+                                          color: context.colors.errorColor,
+                                        ),
+                                        title: Text(
+                                          'Sair',
+                                          style: TextStyle(
+                                            color: context.colors.errorColor,
+                                          ),
+                                        ),
+                                        onTap: () {
+                                          authRepository.logout();
+                                          Navigator.of(context).pushReplacement(
+                                            MaterialPageRoute(
+                                              builder: (context) =>
+                                                  const LoginScreen(),
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                          child: Container(
+                            width: 50,
+                            height: 50,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: context.colors.azulAlba,
+                            ),
+                            child: Center(
+                              child: Text(
+                                _userName.isNotEmpty
+                                    ? _userName[0].toUpperCase()
+                                    : 'U',
+                                style: TextStyle(
+                                  color: context.colors.whiteColor,
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF5F5F5),
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                    );
-                  }).toList(),
-              ],
-            ),
-          );
-        },
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Progresso do Dia',
+                                style: TextStyle(
+                                  color: const Color(0xFF333333),
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              Text(
+                                '$percentualProgresso%',
+                                style: TextStyle(
+                                  color: const Color(0xFF84F41E),
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: LinearProgressIndicator(
+                              value: tarefasHoje.isEmpty
+                                  ? 0
+                                  : (tarefasCompletas / tarefasHoje.length),
+                              minHeight: 8,
+                              backgroundColor: const Color(0xFFDDD9D9),
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                const Color(0xFF84F41E),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Você completou ${tarefasHoje.isEmpty ? 0 : percentualProgresso}% das suas\ntarefas hoje',
+                            style: TextStyle(
+                              color: const Color(0xFF888888),
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+
+                    if (tarefasHoje.isNotEmpty) ...[
+                      Text(
+                        'Suas tarefas para hoje',
+                        style: TextStyle(
+                          color: const Color(0xFF333333),
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: context.colors.azulAlba,
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: tarefasHoje.map((tarefa) {
+                            final isConcluida = tarefa.status == 'concluida';
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 12.0),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 24,
+                                    height: 24,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: context.colors.whiteColor,
+                                        width: 2,
+                                      ),
+                                      color: isConcluida
+                                          ? Color(0xFF10B981)
+                                          : Colors.transparent,
+                                    ),
+                                    child: isConcluida
+                                        ? Icon(
+                                            Icons.check,
+                                            color: context.colors.whiteColor,
+                                            size: 16,
+                                          )
+                                        : null,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          tarefa.tituloTarefa,
+                                          style: TextStyle(
+                                            color: context.colors.whiteColor,
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w500,
+                                            decoration: isConcluida
+                                                ? TextDecoration.lineThrough
+                                                : null,
+                                          ),
+                                        ),
+                                        if (tarefa.horario != null)
+                                          Text(
+                                            tarefa.horario!,
+                                            style: TextStyle(
+                                              color: context.colors.whiteColor
+                                                  .withAlpha(
+                                                    (255 * 0.7).toInt(),
+                                                  ),
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                    ],
+
+                    // Gerenciamento
+                    Text(
+                      'Gerenciamento',
+                      style: TextStyle(
+                        color: const Color(0xFF333333),
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _GerenciamentoButton(
+                            icon: Icons.check_circle,
+                            label: 'Tarefas',
+                            onTap: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      const GerenciamentoTarefasScreen(),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _GerenciamentoButton(
+                            icon: Icons.location_on,
+                            label: 'Metas',
+                            onTap: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      const GeraciamentoMetasScreen(),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
       ),
     );
   }
+}
 
-  String _getNomeTag(String tag) {
-    return tag.toLowerCase() == 'negocio' ? 'Negócio' : 'Faculdade';
-  }
+class _GerenciamentoButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
 
-  Color _getCorTag(String tag) {
-    if (tag.toLowerCase() == 'negocio') {
-      return Color(0xFF10B981);
-    } else {
-      return Color(0xFF3B82F6);
-    }
+  const _GerenciamentoButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: context.colors.azulAlba,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
+          children: [
+            Container(
+              width: 50,
+              height: 50,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: const Color(0xFF7FE2E1),
+              ),
+              child: Icon(icon, color: context.colors.azulAlba, size: 28),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              label,
+              style: TextStyle(
+                color: context.colors.whiteColor,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
@@ -375,7 +465,7 @@ class _ProximamentScreen extends StatelessWidget {
           Text(
             'Em breve',
             style: TextStyle(
-              color: context.colors.whiteColor,
+              color: const Color(0xFF333333),
               fontSize: 20,
               fontWeight: FontWeight.bold,
             ),
@@ -383,7 +473,7 @@ class _ProximamentScreen extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             'Esta funcionalidade em breve estará disponível',
-            style: TextStyle(color: context.colors.textPrimaryColor),
+            style: TextStyle(color: const Color(0xFF888888)),
           ),
         ],
       ),
