@@ -35,7 +35,7 @@ class _GeraciamentoMetasScreenState extends State<GeraciamentoMetasScreen> {
       'Novembro',
       'Dezembro',
     ];
-    return meses[DateTime.now().month - 1];
+    return 'Todas';
   }
 
   int _getMesNumero(String mes) {
