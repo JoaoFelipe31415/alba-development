@@ -160,11 +160,6 @@ class TarefasRepository {
       print(
         'ERRO FIREBASE atualizarTarefa: code=${e.code}, message=${e.message}',
       );
-      if (e.code == 'unavailable') {
-        throw Exception(
-          'Sem conexão com a internet. Verifique sua rede e tente novamente.',
-        );
-      }
       throw Exception('Não foi possível salvar. Tente novamente.');
     } catch (e) {
       print('ERRO GERAL atualizarTarefa: $e');
