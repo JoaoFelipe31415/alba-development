@@ -42,9 +42,9 @@ class TarefasRepository {
 
   Future<List<TarefaDto>> obterTarefas() async {
     try {
-      // if (_userId.isEmpty) {
-      //   throw Exception('Usuário não autenticado.');
-      // }
+      if (_userId.isEmpty) {
+        throw Exception('Usuário não autenticado.');
+      }
 
       final querySnapshot = await _firestore
           .collection(_collection)
@@ -77,7 +77,7 @@ class TarefasRepository {
 
       return _firestore
           .collection(_collection)
-          // .where('userId', isEqualTo: _userId)
+          .where('userId', isEqualTo: _userId)
           .orderBy('dataCriacao', descending: true)
           .snapshots()
           .map(
@@ -95,13 +95,26 @@ class TarefasRepository {
 
   Future<TarefaDto?> obterTarefaPorId(String id) async {
     try {
-      final doc = await _firestore.collection(_collection).doc(id).get();
-
-      if (doc.exists) {
-        return TarefaDto.fromMap(doc.data() as Map<String, dynamic>, doc.id);
+      if (_userId.isEmpty) {
+        throw Exception('Usuário não autenticado.');
       }
 
-      return null;
+      final doc = await _firestore.collection(_collection).doc(id).get();
+
+      if (!doc.exists) {
+        return null;
+      }
+
+      final tarefa = TarefaDto.fromMap(
+        doc.data() as Map<String, dynamic>,
+        doc.id,
+      );
+
+      if (tarefa.userId != _userId) {
+        throw Exception('Acesso negado a esta tarefa.');
+      }
+
+      return tarefa;
     } on FirebaseException catch (e) {
       print(
         'ERRO FIREBASE obterTarefaPorId: code=${e.code}, message=${e.message}',
@@ -120,11 +133,16 @@ class TarefasRepository {
 
   Future<void> atualizarTarefa(TarefaDto tarefa) async {
     try {
+      if (_userId.isEmpty) {
+        throw Exception('Usuário não autenticado.');
+      }
+
       if (tarefa.id == null || tarefa.id!.isEmpty) {
-        throw Exception('ID da tarefa é obrigatório para atualizar');
+        throw Exception('ID da tarefa é obrigatório para atualizar.');
       }
 
       final updateData = {
+        'userId': _userId,
         'tituloTarefa': tarefa.tituloTarefa,
         'diasRealizacao': tarefa.diasRealizacao,
         'horario': tarefa.horario,
@@ -156,6 +174,10 @@ class TarefasRepository {
 
   Future<void> excluirTarefa(String id) async {
     try {
+      if (_userId.isEmpty) {
+        throw Exception('Usuário não autenticado.');
+      }
+
       await _firestore.collection(_collection).doc(id).delete();
     } on FirebaseException catch (e) {
       print(
@@ -215,11 +237,19 @@ class TarefasRepository {
     }
   }
 
-  Stream<List<TarefaDto>> buscarTarefasStream(String titulo, {String? mes, int? dia}) {
+  Stream<List<TarefaDto>> buscarTarefasStream(
+    String titulo, {
+    String? mes,
+    int? dia,
+  }) {
     try {
+      if (_userId.isEmpty) {
+        throw Exception('Usuário não autenticado.');
+      }
+
       return _firestore
           .collection(_collection)
-          // .where('userId', isEqualTo: _userId) // Descomente quando o login estiver ok
+          .where('userId', isEqualTo: _userId)
           .orderBy('dataCriacao', descending: true)
           .snapshots()
           .map((querySnapshot) {
@@ -228,26 +258,33 @@ class TarefasRepository {
                 .toList();
 
             final mesesMap = {
-              'Janeiro': 1, 'Fevereiro': 2, 'Março': 3, 'Abril': 4,
-              'Maio': 5, 'Junho': 6, 'Julho': 7, 'Agosto': 8,
-              'Setembro': 9, 'Outubro': 10, 'Novembro': 11, 'Dezembro': 12
+              'Janeiro': 1,
+              'Fevereiro': 2,
+              'Março': 3,
+              'Abril': 4,
+              'Maio': 5,
+              'Junho': 6,
+              'Julho': 7,
+              'Agosto': 8,
+              'Setembro': 9,
+              'Outubro': 10,
+              'Novembro': 11,
+              'Dezembro': 12,
             };
 
             return tarefas.where((tarefa) {
-              // 1. Filtro por Título (Busca)
-              bool bateTitulo = titulo.isEmpty || 
-                  tarefa.tituloTarefa.toLowerCase().contains(titulo.toLowerCase());
+              final bateTitulo =
+                  titulo.isEmpty ||
+                  tarefa.tituloTarefa.toLowerCase().contains(
+                    titulo.toLowerCase(),
+                  );
 
-              // 2. Filtro por Mês
-              bool bateMes = true;
+              var bateMes = true;
               if (mes != null && mesesMap.containsKey(mes)) {
                 bateMes = tarefa.dataCriacao.month == mesesMap[mes];
               }
 
-              // 3. Filtro por Dia (AQUI ESTAVA O QUE FALTAVA!)
-              // Se 'dia' for null (como na lista de baixo), ele ignora o filtro.
-              // Se 'dia' tiver valor (como na seção 'Hoje'), ele filtra.
-              bool bateDia = true;
+              var bateDia = true;
               if (dia != null) {
                 bateDia = tarefa.dataCriacao.day == dia;
               }
