@@ -35,7 +35,7 @@ class _GeraciamentoMetasScreenState extends State<GeraciamentoMetasScreen> {
       'Novembro',
       'Dezembro',
     ];
-    return meses[DateTime.now().month - 1];
+    return 'Todas';
   }
 
   int _getMesNumero(String mes) {
@@ -248,6 +248,7 @@ class _GeraciamentoMetasScreenState extends State<GeraciamentoMetasScreen> {
                     value: _mesSelecionado,
                     items:
                         [
+                              "Todas",
                               'Janeiro',
                               'Fevereiro',
                               'Março',
@@ -299,9 +300,12 @@ class _GeraciamentoMetasScreenState extends State<GeraciamentoMetasScreen> {
                 }
 
                 final todasMetas = snapshot.data ?? [];
-                final metasDoMes = todasMetas.where((meta) {
-                  return meta.prazo.month == _getMesNumero(_mesSelecionado);
-                }).toList();
+                final metasDoMes = _mesSelecionado == "Todas"
+                    ? todasMetas
+                    : todasMetas.where((meta) {
+                        return meta.prazo.month ==
+                            _getMesNumero(_mesSelecionado);
+                      }).toList();
 
                 final totalMetas = metasDoMes.length;
 
