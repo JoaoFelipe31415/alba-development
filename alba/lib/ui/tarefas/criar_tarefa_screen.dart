@@ -71,6 +71,43 @@ class _CriarTarefaScreenState extends State<CriarTarefaScreen> {
     }
   }
 
+  Future<void> _selecionarHorario() async {
+    final agora = TimeOfDay.now();
+
+    TimeOfDay initialTime = agora;
+
+    if (_horarioController.text.isNotEmpty) {
+      final partes = _horarioController.text.split(':');
+      if (partes.length == 2) {
+        final hora = int.tryParse(partes[0]);
+        final minuto = int.tryParse(partes[1]);
+        if (hora != null && minuto != null) {
+          initialTime = TimeOfDay(hour: hora, minute: minuto);
+        }
+      }
+    }
+
+    final horarioSelecionado = await showTimePicker(
+      context: context,
+      initialTime: initialTime,
+      builder: (context, child) {
+        return MediaQuery(
+          data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
+          child: child!,
+        );
+      },
+    );
+
+    if (horarioSelecionado != null) {
+      final hora = horarioSelecionado.hour.toString().padLeft(2, '0');
+      final minuto = horarioSelecionado.minute.toString().padLeft(2, '0');
+
+      setState(() {
+        _horarioController.text = '$hora:$minuto';
+      });
+    }
+  }
+
   Future<void> _criarTarefa() async {
     if (!(_formKey.currentState?.validate() ?? false)) {
       return;
@@ -132,9 +169,9 @@ class _CriarTarefaScreenState extends State<CriarTarefaScreen> {
   }
 
   void _mostrarErro(String mensagem) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(mensagem)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(mensagem)));
   }
 
   @override
@@ -184,15 +221,8 @@ class _CriarTarefaScreenState extends State<CriarTarefaScreen> {
               _buildDiasSelector(colors),
               const SizedBox(height: 28),
               _buildSectionLabel('Horário (opcional)', colors),
-              _buildCustomTextField(
-                controller: _horarioController,
-                hint: 'HH:MM',
-                icon: Icons.access_time_rounded,
-                keyboardType: TextInputType.datetime,
-                colors: colors,
-                validator: (value) =>
-                    TarefaValidator.validateHorario(value),
-              ),
+              _buildHorarioSelector(colors),
+
               const SizedBox(height: 32),
               _buildMetaSection(colors),
               const SizedBox(height: 48),
@@ -204,7 +234,8 @@ class _CriarTarefaScreenState extends State<CriarTarefaScreen> {
                     backgroundColor: colors.azulAlba,
                     padding: const EdgeInsets.symmetric(vertical: 18),
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16)),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
                     elevation: 0,
                   ),
                   child: _salvando
@@ -221,6 +252,57 @@ class _CriarTarefaScreenState extends State<CriarTarefaScreen> {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHorarioSelector(AppColors colors) {
+    final horario = _horarioController.text.trim();
+
+    return GestureDetector(
+      onTap: _selecionarHorario,
+      child: Container(
+        margin: const EdgeInsets.only(top: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+        decoration: BoxDecoration(
+          color: Colors.grey.shade50,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey.shade200),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              Icons.access_time_rounded,
+              color: colors.azulAlba.withOpacity(0.6),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                horario.isEmpty ? 'Selecionar horário' : horario,
+                style: TextStyle(
+                  fontSize: 16,
+                  color: horario.isEmpty
+                      ? Colors.grey.shade500
+                      : Colors.black87,
+                  fontWeight: horario.isEmpty
+                      ? FontWeight.normal
+                      : FontWeight.w600,
+                ),
+              ),
+            ),
+            if (horario.isNotEmpty)
+              GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _horarioController.clear();
+                  });
+                },
+                child: const Icon(Icons.close, size: 20),
+              )
+            else
+              Icon(Icons.keyboard_arrow_down, color: Colors.grey.shade600),
+          ],
         ),
       ),
     );
@@ -260,8 +342,10 @@ class _CriarTarefaScreenState extends State<CriarTarefaScreen> {
           hintText: hint,
           prefixIcon: Icon(icon, color: colors.azulAlba.withOpacity(0.6)),
           border: InputBorder.none,
-          contentPadding:
-              const EdgeInsets.symmetric(vertical: 15, horizontal: 10),
+          contentPadding: const EdgeInsets.symmetric(
+            vertical: 15,
+            horizontal: 10,
+          ),
         ),
       ),
     );
@@ -278,7 +362,9 @@ class _CriarTarefaScreenState extends State<CriarTarefaScreen> {
           selected: selecionado,
           onSelected: (value) {
             setState(() {
-              value ? _diasSelecionados.add(dia) : _diasSelecionados.remove(dia);
+              value
+                  ? _diasSelecionados.add(dia)
+                  : _diasSelecionados.remove(dia);
             });
           },
           selectedColor: colors.neonGreen,
@@ -288,7 +374,9 @@ class _CriarTarefaScreenState extends State<CriarTarefaScreen> {
             fontWeight: FontWeight.bold,
           ),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          side: BorderSide(color: selecionado ? colors.neonGreen : Colors.grey.shade300),
+          side: BorderSide(
+            color: selecionado ? colors.neonGreen : Colors.grey.shade300,
+          ),
         );
       }).toList(),
     );
@@ -355,10 +443,12 @@ class _CriarTarefaScreenState extends State<CriarTarefaScreen> {
                   value: _metaSelecionada,
                   hint: const Text('Selecione a meta'),
                   items: _metasFiltradas
-                      .map((m) => DropdownMenuItem(
-                            value: m,
-                            child: Text(m.tituloMeta),
-                          ))
+                      .map(
+                        (m) => DropdownMenuItem(
+                          value: m,
+                          child: Text(m.tituloMeta),
+                        ),
+                      )
                       .toList(),
                   onChanged: (v) => setState(() => _metaSelecionada = v),
                   decoration: InputDecoration(
@@ -369,8 +459,8 @@ class _CriarTarefaScreenState extends State<CriarTarefaScreen> {
                     ),
                   ),
                 ),
-            ]
-          ]
+            ],
+          ],
         ],
       ),
     );
@@ -407,4 +497,3 @@ class _CriarTarefaScreenState extends State<CriarTarefaScreen> {
     );
   }
 }
-  

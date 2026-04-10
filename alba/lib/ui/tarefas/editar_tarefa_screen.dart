@@ -34,38 +34,57 @@ class _EditarTarefaScreenState extends State<EditarTarefaScreen> {
   String? _tagSelecionada;
 
   final List<String> _diasSemana = const [
-    'segunda', 'terca', 'quarta', 'quinta', 'sexta', 'sabado', 'domingo',
+    'segunda',
+    'terca',
+    'quarta',
+    'quinta',
+    'sexta',
+    'sabado',
+    'domingo',
   ];
 
   List<MetaDto> get _metasFiltradas {
     if (_tagSelecionada == null) return [];
-    return _metas.where((meta) => meta.tag.toLowerCase() == _tagSelecionada).toList();
+    return _metas
+        .where((meta) => meta.tag.toLowerCase() == _tagSelecionada)
+        .toList();
   }
 
   @override
   void initState() {
     super.initState();
-    // Preenche os campos com os dados da tarefa recebida
     _tituloController = TextEditingController(text: widget.tarefa.tituloTarefa);
     _horarioController = TextEditingController(text: widget.tarefa.horario ?? '');
     _diasSelecionados = widget.tarefa.diasRealizacao
-      .map((dia) => dia.toLowerCase())
-      .toList();
+        .map((dia) => dia.toLowerCase())
+        .toList();
     _vincularMeta = widget.tarefa.metaId != null;
     _tagSelecionada = widget.tarefa.tag?.toLowerCase();
     _carregarMetas();
+  }
+
+  @override
+  void dispose() {
+    _tituloController.dispose();
+    _horarioController.dispose();
+    super.dispose();
   }
 
   Future<void> _carregarMetas() async {
     try {
       final metas = await _metasRepository.obterMetas();
       MetaDto? metaInicial;
+
       if (widget.tarefa.metaId != null) {
         try {
           metaInicial = metas.firstWhere((m) => m.id == widget.tarefa.metaId);
-        } catch (_) { metaInicial = null; }
+        } catch (_) {
+          metaInicial = null;
+        }
       }
+
       if (!mounted) return;
+
       setState(() {
         _metas = metas;
         _metaSelecionada = metaInicial;
@@ -81,11 +100,40 @@ class _EditarTarefaScreenState extends State<EditarTarefaScreen> {
     }
   }
 
-  @override
-  void dispose() {
-    _tituloController.dispose();
-    _horarioController.dispose();
-    super.dispose();
+  Future<void> _selecionarHorario() async {
+    final agora = TimeOfDay.now();
+    TimeOfDay initialTime = agora;
+
+    if (_horarioController.text.isNotEmpty) {
+      final partes = _horarioController.text.split(':');
+      if (partes.length == 2) {
+        final hora = int.tryParse(partes[0]);
+        final minuto = int.tryParse(partes[1]);
+        if (hora != null && minuto != null) {
+          initialTime = TimeOfDay(hour: hora, minute: minuto);
+        }
+      }
+    }
+
+    final horarioSelecionado = await showTimePicker(
+      context: context,
+      initialTime: initialTime,
+      builder: (context, child) {
+        return MediaQuery(
+          data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
+          child: child!,
+        );
+      },
+    );
+
+    if (horarioSelecionado != null) {
+      final hora = horarioSelecionado.hour.toString().padLeft(2, '0');
+      final minuto = horarioSelecionado.minute.toString().padLeft(2, '0');
+
+      setState(() {
+        _horarioController.text = '$hora:$minuto';
+      });
+    }
   }
 
   Future<void> _editarTarefa() async {
@@ -104,7 +152,10 @@ class _EditarTarefaScreenState extends State<EditarTarefaScreen> {
       return;
     }
 
-    final metaErro = TarefaValidator.validateMeta(vincularMeta: _vincularMeta, metaId: _metaSelecionada?.id);
+    final metaErro = TarefaValidator.validateMeta(
+      vincularMeta: _vincularMeta,
+      metaId: _metaSelecionada?.id,
+    );
 
     if (metaErro != null) {
       _mostrarErro(metaErro);
@@ -115,10 +166,12 @@ class _EditarTarefaScreenState extends State<EditarTarefaScreen> {
       setState(() => _salvando = true);
 
       final tarefaAtualizada = TarefaDto(
-        id: widget.tarefa.id, // ID essencial para atualizar
+        id: widget.tarefa.id,
         tituloTarefa: _tituloController.text.trim(),
         diasRealizacao: _diasSelecionados,
-        horario: _horarioController.text.trim().isEmpty ? null : _horarioController.text.trim(),
+        horario: _horarioController.text.trim().isEmpty
+            ? null
+            : _horarioController.text.trim(),
         metaId: _vincularMeta ? _metaSelecionada?.id : null,
         tituloMeta: _vincularMeta ? _metaSelecionada?.tituloMeta : null,
         tag: _vincularMeta ? _tagSelecionada : null,
@@ -132,33 +185,47 @@ class _EditarTarefaScreenState extends State<EditarTarefaScreen> {
       if (!mounted) return;
       Navigator.pop(context);
     } catch (e) {
-      _mostrarErro("Erro ao atualizar: ${e.toString()}");
+      _mostrarErro('Erro ao atualizar: ${e.toString()}');
     } finally {
-      if (mounted) setState(() => _salvando = false);
+      if (mounted) {
+        setState(() => _salvando = false);
+      }
     }
   }
 
   void _mostrarErro(String mensagem) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(mensagem)));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(mensagem)));
   }
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AppColors>()!;
+
     return Scaffold(
       backgroundColor: colors.whiteColor,
       appBar: AppBar(
         backgroundColor: colors.whiteColor,
         elevation: 0,
-        title: Text('Editar Tarefa',
-            style: TextStyle(color: colors.azulAlba, fontWeight: FontWeight.bold, fontSize: 22)),
+        title: Text(
+          'Editar Tarefa',
+          style: TextStyle(
+            color: colors.azulAlba,
+            fontWeight: FontWeight.bold,
+            fontSize: 22,
+          ),
+        ),
         leading: IconButton(
           onPressed: () => Navigator.pop(context),
           icon: Icon(Icons.arrow_back_ios, color: colors.azulAlba),
         ),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1),
-          child: Container(color: colors.azulAlba.withOpacity(0.2), height: 1),
+          child: Container(
+            color: colors.azulAlba.withOpacity(0.2),
+            height: 1,
+          ),
         ),
       ),
       body: SingleChildScrollView(
@@ -170,30 +237,22 @@ class _EditarTarefaScreenState extends State<EditarTarefaScreen> {
             children: [
               _buildSectionLabel('O que você vai realizar?', colors),
               _buildCustomTextField(
-                  controller: _tituloController,
-                  hint: 'Título da tarefa...',
-                  icon: Icons.edit_note_rounded,
-                  validator: (value) => TarefaValidator.validateTitulo(value ?? ''),
-                  colors: colors),
-              
+                controller: _tituloController,
+                hint: 'Título da tarefa...',
+                icon: Icons.edit_note_rounded,
+                validator: (value) =>
+                    TarefaValidator.validateTitulo(value ?? ''),
+                colors: colors,
+              ),
               const SizedBox(height: 28),
               _buildSectionLabel('Dias de realização', colors),
               const SizedBox(height: 12),
               _buildDiasSelector(colors),
-
               const SizedBox(height: 28),
               _buildSectionLabel('Horário (opcional)', colors),
-              _buildCustomTextField(
-                  controller: _horarioController,
-                  hint: 'HH:MM',
-                  icon: Icons.access_time_rounded,
-                  keyboardType: TextInputType.datetime,
-                  validator: (value) => TarefaValidator.validateHorario(value),
-                  colors: colors),
-
+              _buildHorarioSelector(colors),
               const SizedBox(height: 32),
               _buildMetaSection(colors),
-
               const SizedBox(height: 48),
               SizedBox(
                 width: double.infinity,
@@ -202,13 +261,21 @@ class _EditarTarefaScreenState extends State<EditarTarefaScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: colors.azulAlba,
                     padding: const EdgeInsets.symmetric(vertical: 18),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
                     elevation: 0,
                   ),
                   child: _salvando
                       ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text('Salvar Alterações',
-                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
+                      : const Text(
+                          'Salvar Alterações',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
+                          ),
+                        ),
                 ),
               ),
             ],
@@ -218,9 +285,15 @@ class _EditarTarefaScreenState extends State<EditarTarefaScreen> {
     );
   }
 
-
   Widget _buildSectionLabel(String label, AppColors colors) {
-    return Text(label, style: TextStyle(color: colors.azulAlba, fontWeight: FontWeight.bold, fontSize: 16));
+    return Text(
+      label,
+      style: TextStyle(
+        color: colors.azulAlba,
+        fontWeight: FontWeight.bold,
+        fontSize: 16,
+      ),
+    );
   }
 
   Widget _buildCustomTextField({
@@ -246,7 +319,60 @@ class _EditarTarefaScreenState extends State<EditarTarefaScreen> {
           hintText: hint,
           prefixIcon: Icon(icon, color: colors.azulAlba.withOpacity(0.6)),
           border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(vertical: 15, horizontal: 10),
+          contentPadding: const EdgeInsets.symmetric(
+            vertical: 15,
+            horizontal: 10,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHorarioSelector(AppColors colors) {
+    final horario = _horarioController.text.trim();
+
+    return GestureDetector(
+      onTap: _selecionarHorario,
+      child: Container(
+        margin: const EdgeInsets.only(top: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+        decoration: BoxDecoration(
+          color: Colors.grey.shade50,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey.shade200),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              Icons.access_time_rounded,
+              color: colors.azulAlba.withOpacity(0.6),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                horario.isEmpty ? 'Selecionar horário' : horario,
+                style: TextStyle(
+                  fontSize: 16,
+                  color: horario.isEmpty
+                      ? Colors.grey.shade500
+                      : Colors.black87,
+                  fontWeight:
+                      horario.isEmpty ? FontWeight.normal : FontWeight.w600,
+                ),
+              ),
+            ),
+            if (horario.isNotEmpty)
+              GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _horarioController.clear();
+                  });
+                },
+                child: const Icon(Icons.close, size: 20),
+              )
+            else
+              Icon(Icons.keyboard_arrow_down, color: Colors.grey.shade600),
+          ],
         ),
       ),
     );
@@ -258,8 +384,9 @@ class _EditarTarefaScreenState extends State<EditarTarefaScreen> {
       runSpacing: 8,
       children: _diasSemana.map((dia) {
         final selecionado = _diasSelecionados.contains(dia);
+
         return ChoiceChip(
-          label: Text(dia.substring(0, 3)),
+          label: Text(dia.substring(0, 3).toUpperCase()),
           selected: selecionado,
           onSelected: (value) {
             setState(() {
@@ -272,8 +399,12 @@ class _EditarTarefaScreenState extends State<EditarTarefaScreen> {
             color: selecionado ? colors.azulAlba : Colors.grey.shade600,
             fontWeight: FontWeight.bold,
           ),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          side: BorderSide(color: selecionado ? colors.neonGreen : Colors.grey.shade300),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+          side: BorderSide(
+            color: selecionado ? colors.neonGreen : Colors.grey.shade300,
+          ),
         );
       }).toList(),
     );
@@ -296,7 +427,13 @@ class _EditarTarefaScreenState extends State<EditarTarefaScreen> {
               Switch(
                 value: _vincularMeta,
                 activeColor: colors.neonGreen,
-                onChanged: (v) => setState(() => _vincularMeta = v),
+                onChanged: (v) => setState(() {
+                  _vincularMeta = v;
+                  if (!v) {
+                    _tagSelecionada = null;
+                    _metaSelecionada = null;
+                  }
+                }),
               ),
             ],
           ),
@@ -334,36 +471,55 @@ class _EditarTarefaScreenState extends State<EditarTarefaScreen> {
                   value: _metaSelecionada,
                   hint: const Text('Selecione a meta'),
                   items: _metasFiltradas
-                      .map((m) => DropdownMenuItem(value: m, child: Text(m.tituloMeta)))
+                      .map(
+                        (m) => DropdownMenuItem(
+                          value: m,
+                          child: Text(m.tituloMeta),
+                        ),
+                      )
                       .toList(),
                   onChanged: (v) => setState(() => _metaSelecionada = v),
                   decoration: InputDecoration(
                     filled: true,
                     fillColor: Colors.white,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                 ),
-            ]
-          ]
+            ],
+          ],
         ],
       ),
     );
   }
 
   Widget _buildTagButton(String label, String tag, AppColors colors) {
-    bool isSelected = _tagSelecionada == tag;
+    final isSelected = _tagSelecionada == tag;
+
     return Expanded(
       child: GestureDetector(
-        onTap: () => setState(() { _tagSelecionada = tag; _metaSelecionada = null; }),
+        onTap: () => setState(() {
+          _tagSelecionada = tag;
+          _metaSelecionada = null;
+        }),
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
             color: isSelected ? colors.azulAlba : Colors.white,
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: isSelected ? colors.azulAlba : Colors.grey.shade300),
+            border: Border.all(
+              color: isSelected ? colors.azulAlba : Colors.grey.shade300,
+            ),
           ),
           child: Center(
-            child: Text(label, style: TextStyle(color: isSelected ? Colors.white : Colors.grey.shade600, fontWeight: FontWeight.bold)),
+            child: Text(
+              label,
+              style: TextStyle(
+                color: isSelected ? Colors.white : Colors.grey.shade600,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ),
         ),
       ),
