@@ -5,8 +5,11 @@ import 'package:alba/domain/dto/tarefa_dto.dart';
 import 'package:alba/ui/design_system/theme/app_colors.dart';
 import 'package:alba/ui/login/login_screen.dart';
 import 'package:alba/ui/metas/gerenciamento_metas_screen.dart';
+import 'package:alba/ui/progresso/progresso_screen.dart';
+import 'package:alba/ui/progresso/progresso_viewmodel.dart';
 import 'package:alba/ui/tarefas/gerenciamento_tarefas_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -23,7 +26,9 @@ class _HomeScreenState extends State<HomeScreen> {
     const InicioScreen(),
     const GeraciamentoMetasScreen(),
     const GerenciamentoTarefasScreen(),
-    const _ProximamentScreen(), // Progresso
+    ChangeNotifierProvider(create: (context) => ProgressViewModel(),
+        child: const ProgressScreen()
+        ), // Progresso
     const _ProximamentScreen(), // On-Demand
     const _ProximamentScreen(), // Menu
   ];
