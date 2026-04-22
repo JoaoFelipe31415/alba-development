@@ -41,7 +41,7 @@ class ProgressScreen extends StatelessWidget {
                   const SizedBox(height: 32),
                   _buildInsightsSection(viewModel.data!),
                   const SizedBox(height: 32),
-                  _buildEmotionalWellbeing(),
+                  _buildEmotionalWellbeing(viewModel),
                   const SizedBox(height: 32),
                   _buildFocusDistribution(viewModel.data!),
                   const SizedBox(height: 32),
@@ -170,7 +170,7 @@ class ProgressScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildEmotionalWellbeing() {
+  Widget _buildEmotionalWellbeing(ProgressViewModel viewModel) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -189,15 +189,20 @@ class ProgressScreen extends StatelessWidget {
             children: [
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].map((day) {
+                children: List.generate(7, (index) {
+                  const dias = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+
                   return Column(
                     children: [
-                      const Text("🙂", style: TextStyle(fontSize: 24)), // Mock dos emojis
-                      const SizedBox(height: 8),
-                      Text(day, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                      Text(
+                        viewModel.weeklyMood[index],
+                        style: const TextStyle(fontSize: 24)
+                      ),
+                      const SizedBox(height:8),
+                      Text(dias[index], style: const TextStyle(color: Colors.grey, fontSize: 12)),
                     ],
                   );
-                }).toList(),
+                }),
               ),
             ],
           ),
@@ -236,7 +241,10 @@ class ProgressScreen extends StatelessWidget {
                             Text(item.label, style: const TextStyle(fontWeight: FontWeight.w500)),
                           ],
                         ),
-                        Text("${item.value} dias", style: const TextStyle(fontWeight: FontWeight.bold)),
+                        Text(
+                          item.label == "Descanso" ? "${item.value}h" : "${item.value} dias", 
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 8),

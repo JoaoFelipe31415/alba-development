@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class TarefaDto {
   String? id;
   String tituloTarefa;
@@ -74,7 +76,7 @@ class TarefaDto {
       'tituloMeta': tituloMeta,
       'tag': tag, // 👈 NOVO
       'status': status,
-      'dataCriacao': dataCriacao,
+      'dataCriacao': Timestamp.fromDate(dataCriacao),
     };
   }
 

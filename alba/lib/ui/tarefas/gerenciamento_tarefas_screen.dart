@@ -180,8 +180,36 @@ class _GerenciamentoTarefasScreenState
     });
   }
 
-  void _toggleStatusTarefa(TarefaDto tarefa) {
+  Future<void> _toggleStatusTarefa(TarefaDto tarefa) async {
+    if (tarefa.id == null) return;
+
+    // 1. Definimos o novo status baseado no estado atual
+    final estaConcluida = _estaConcluidaLocal(tarefa);
+    final novoStatus = estaConcluida ? 'pendente' : 'concluida';
+
+    // 2. Atualizamos o visual imediatamente (feedback rápido para o usuário)
     _toggleStatusLocal(tarefa);
+
+    try {
+      // 3. Enviamos para o Firebase
+      await _tarefasRepository.atualizarStatus(tarefa.id!, novoStatus);
+      
+      // Opcional: mostrar um feedback
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Tarefa marcada como $novoStatus!'),
+          duration: const Duration(seconds: 1),
+        ),
+      );
+    } catch (e) {
+      // Se der erro no banco, voltamos o visual para o estado anterior
+      _toggleStatusLocal(tarefa);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Erro ao atualizar no banco de dados.')),
+      );
+    }
   }
 
   String _nomeDiaInterno(DateTime data) {
