@@ -178,6 +178,7 @@ class _EditarTarefaScreenState extends State<EditarTarefaScreen> {
         status: widget.tarefa.status,
         userId: widget.tarefa.userId,
         dataCriacao: widget.tarefa.dataCriacao,
+        dataConclusao: widget.tarefa.dataConclusao,
       );
 
       await _tarefasRepository.atualizarTarefa(tarefaAtualizada);

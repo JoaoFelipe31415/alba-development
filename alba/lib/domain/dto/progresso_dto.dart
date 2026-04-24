@@ -1,4 +1,3 @@
-
 class InsightModel {
   final String title;
   final String description;
@@ -10,16 +9,26 @@ class InsightModel {
 class BarDataModel {
   final String label;
   final int value;
+  final int attributed;
   final String colorHex;
 
-  BarDataModel({required this.label, required this.value, required this.colorHex});
+  BarDataModel({required this.label, required this.value, this.attributed = 0, required this.colorHex});
 }
 
 class ProgressDataModel {
   final List<InsightModel> insights;
   List<BarDataModel> focusDistribution;
   List<BarDataModel> bottlenecks;
-  final int completionRate;
+  int completionRate;
+  List<BarDataModel> weeklyProductivity = [];
+
+Map<String, double> restStats = {
+    'Nenhum': 0,
+    '30 minutos': 0,
+    'Entre 1 e 2 horas': 0,
+    'Mais de 2 horas': 0,
+  };
+  String mostFrequentRest = "0"; 
 
   ProgressDataModel({
     required this.insights,
@@ -28,7 +37,6 @@ class ProgressDataModel {
     required this.completionRate,
   });
 }
-
 
 class ProgressDTO {
   static ProgressDataModel fromFirestore(Map<String, dynamic> json) {

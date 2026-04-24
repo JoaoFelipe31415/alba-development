@@ -294,7 +294,10 @@ class TarefasRepository {
   }
 
 Future<void> atualizarStatus(String id, String novoStatus) async {
-  await _firestore.collection('Tarefas').doc(id).update({'status': novoStatus});
+  await _firestore.collection(_collection).doc(id).update({
+    'status': novoStatus,
+    'dataConclusao': novoStatus == 'concluida' ? FieldValue.serverTimestamp() : null,
+  });
 }
 
 Future<List<TarefaDto>> obterTarefasConcluidas(String userId) async {
