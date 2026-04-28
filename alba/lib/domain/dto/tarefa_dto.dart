@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class TarefaDto {
   String? id;
   String tituloTarefa;
@@ -9,7 +11,8 @@ class TarefaDto {
   String status;
   String userId;
   DateTime dataCriacao;
-
+  DateTime? dataConclusao;
+  
   TarefaDto({
     this.id,
     required this.tituloTarefa,
@@ -21,6 +24,7 @@ class TarefaDto {
     required this.status,
     required this.userId,
     required this.dataCriacao,
+    this.dataConclusao,
   });
 
   void setId(String value) {
@@ -74,7 +78,8 @@ class TarefaDto {
       'tituloMeta': tituloMeta,
       'tag': tag, // 👈 NOVO
       'status': status,
-      'dataCriacao': dataCriacao,
+      'dataCriacao': Timestamp.fromDate(dataCriacao),
+      'dataConclusao': dataConclusao != null ? Timestamp.fromDate(dataConclusao!): null,
     };
   }
 
@@ -82,7 +87,7 @@ class TarefaDto {
     String _tratarString(dynamic valor) {
       if (valor == null) return '';
       if (valor is String) return valor;
-      // Se for um DocumentReference (o causador do erro), pegamos o ID dele
+
       try {
         return valor.id; 
       } catch (e) {
@@ -103,21 +108,9 @@ class TarefaDto {
       dataCriacao: data['dataCriacao'] != null 
           ? (data['dataCriacao'] as dynamic).toDate() 
           : DateTime.now(),
+      dataConclusao: data['dataConclusao'] != null
+          ? (data['dataConclusao'] as dynamic).toDate()
+          :null,
     );
   }
 } 
-    
-//     return TarefaDto(
-//       id: data['id'] ?? id,
-//       tituloTarefa: data['tituloTarefa'] ?? '',
-//       diasRealizacao: List<String>.from(data['diasRealizacao'] ?? []),
-//       horario: data['horario'],
-//       metaId: data['metaId'],
-//       tituloMeta: data['tituloMeta'],
-//       tag: data['tag'], // 👈 NOVO
-//       status: data['status'] ?? 'pendente',
-//       userId: data['userId'] ?? '',
-//       dataCriacao: (data['dataCriacao'] as dynamic).toDate() ?? DateTime.now(),
-//     );
-//   }
-// }

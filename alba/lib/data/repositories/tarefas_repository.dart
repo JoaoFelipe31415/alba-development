@@ -292,4 +292,28 @@ class TarefasRepository {
       throw Exception('Não foi possível buscar as tarefas.');
     }
   }
+
+Future<void> atualizarStatus(String id, String novoStatus) async {
+  await _firestore.collection(_collection).doc(id).update({
+    'status': novoStatus,
+    'dataConclusao': novoStatus == 'concluida' ? FieldValue.serverTimestamp() : null,
+  });
+}
+
+Future<List<TarefaDto>> obterTarefasConcluidas(String userId) async {
+  try {
+    final querySnapshot = await _firestore
+        .collection(_collection)
+        .where('userId', isEqualTo: userId)
+        .where('status', isEqualTo: 'concluida')
+        .get();
+
+    return querySnapshot.docs
+        .map((doc) => TarefaDto.fromMap(doc.data(), doc.id))
+        .toList();
+  } catch (e) {
+    print('Erro ao buscar concluídas: $e');
+    return [];
+  }
+}
 }
