@@ -1,10 +1,12 @@
 import 'package:alba/domain/dto/tarefa_dto.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:alba/data/services/conexao_service.dart';
 
 class TarefasRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  final ConexaoService _conexaoService = ConexaoService();
 
   static const String _collection = 'Tarefas';
 
@@ -14,6 +16,14 @@ class TarefasRepository {
     try {
       if (_userId.isEmpty) {
         throw Exception('Usuário não autenticado.');
+      }
+
+      final temInternet = await _conexaoService.temInternet();
+
+      if (!temInternet) {
+        throw Exception(
+          'Sem conexão com a internet. Verifique sua rede e tente novamente.',
+        );
       }
 
       tarefa.userId = _userId;
@@ -28,11 +38,6 @@ class TarefasRepository {
       return docRef.id;
     } on FirebaseException catch (e) {
       print('ERRO FIREBASE criarTarefa: code=${e.code}, message=${e.message}');
-      if (e.code == 'unavailable') {
-        throw Exception(
-          'Sem conexão com a internet. Verifique sua rede e tente novamente.',
-        );
-      }
       throw Exception('Não foi possível salvar. Tente novamente.');
     } catch (e) {
       print('ERRO GERAL criarTarefa: $e');
@@ -293,27 +298,29 @@ class TarefasRepository {
     }
   }
 
-Future<void> atualizarStatus(String id, String novoStatus) async {
-  await _firestore.collection(_collection).doc(id).update({
-    'status': novoStatus,
-    'dataConclusao': novoStatus == 'concluida' ? FieldValue.serverTimestamp() : null,
-  });
-}
-
-Future<List<TarefaDto>> obterTarefasConcluidas(String userId) async {
-  try {
-    final querySnapshot = await _firestore
-        .collection(_collection)
-        .where('userId', isEqualTo: userId)
-        .where('status', isEqualTo: 'concluida')
-        .get();
-
-    return querySnapshot.docs
-        .map((doc) => TarefaDto.fromMap(doc.data(), doc.id))
-        .toList();
-  } catch (e) {
-    print('Erro ao buscar concluídas: $e');
-    return [];
+  Future<void> atualizarStatus(String id, String novoStatus) async {
+    await _firestore.collection(_collection).doc(id).update({
+      'status': novoStatus,
+      'dataConclusao': novoStatus == 'concluida'
+          ? FieldValue.serverTimestamp()
+          : null,
+    });
   }
-}
+
+  Future<List<TarefaDto>> obterTarefasConcluidas(String userId) async {
+    try {
+      final querySnapshot = await _firestore
+          .collection(_collection)
+          .where('userId', isEqualTo: userId)
+          .where('status', isEqualTo: 'concluida')
+          .get();
+
+      return querySnapshot.docs
+          .map((doc) => TarefaDto.fromMap(doc.data(), doc.id))
+          .toList();
+    } catch (e) {
+      print('Erro ao buscar concluídas: $e');
+      return [];
+    }
+  }
 }
