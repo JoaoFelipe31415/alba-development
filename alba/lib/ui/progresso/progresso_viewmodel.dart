@@ -39,7 +39,7 @@ bool get isMensal => currentFilter == "Mês";
 
   } else {
 
-    dataInicio = agora.subtract(Duration(days: agora.weekday - 1));
+    dataInicio = agora.subtract(Duration(days: agora.weekday % 7));
     dataInicio = DateTime(dataInicio.year, dataInicio.month, dataInicio.day);
   }
 
