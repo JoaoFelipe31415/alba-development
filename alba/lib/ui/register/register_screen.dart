@@ -2,12 +2,15 @@ import 'package:alba/config/dependencies.dart';
 import 'package:alba/data/repositories/auth_repository.dart';
 import 'package:alba/domain/dto/credentials_register_dto.dart';
 import 'package:alba/domain/validators/register_validator.dart';
+import 'package:alba/ui/design_system/widgets/input_phone_form.dart';
 import 'package:alba/ui/design_system/widgets/input_register.dart';
 import 'package:alba/ui/register/register_viewmodel.dart';
+import 'package:country_code_picker/country_code_picker.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:alba/ui/design_system/constants/spaces.dart';
 import 'package:alba/ui/utils/images.dart';
+import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -24,10 +27,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final viewmodel = RegisterViewmodel(injector.get<AuthRepository>());
   final validator = RegisterValidator();
   final dto = CredentialsRegisterDto();
+  String _countryCode = '+55';
 
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
   final confirmPasswordController = TextEditingController();
+  final phoneController = TextEditingController();
 
   final formKey = GlobalKey<FormState>();
 
@@ -134,6 +139,44 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       dto.setConfirmPassword(value);
                     },
                     validator: validator.byField(dto, 'confirmPassword'),
+                  ),
+                  Row(
+                    children: [
+                      CountryCodePicker(
+                        padding: EdgeInsets.zero,
+                        onChanged: (value) {
+                          _countryCode = value.dialCode!;
+                        },
+                        initialSelection: 'BR',
+                        favorite: ['+55', 'BR'],
+                        showCountryOnly: false,
+                        showOnlyCountryWhenClosed: false,
+                        alignLeft: false,
+                      ),
+                      Flexible(
+                        child: InputPhoneForm(
+                          isPassword: false,
+                          controller: phoneController,
+                          title: 'Qual é o seu telefone?',
+                          labelText: 'Telefone',
+                          hintText: 'XX XXXXX-XXXX',
+                          obscureText: false,
+                          validator: validator.byField(dto, 'phone'),
+                          onChanged: (value) {
+                            final phone = _countryCode.substring(1) + value;
+                            dto.setPhone(phone.replaceAll(' ', ''));
+                          },
+                          inputFormatters: [
+                            MaskTextInputFormatter(
+                              mask: '## ##### ####',
+                              filter: {'#': RegExp(r'[0-9]')},
+                              type: MaskAutoCompletionType.lazy,
+                            ),
+                          ],
+                          keyboardType: TextInputType.phone,
+                        ),
+                      ),
+                    ],
                   ),
 
                   ListenableBuilder(

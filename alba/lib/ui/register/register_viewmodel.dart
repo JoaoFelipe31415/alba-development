@@ -36,10 +36,14 @@ class RegisterViewmodel extends ChangeNotifier {
             _state = RegisterStateError('Senha fraca');
             break;
           default:
-            _state = RegisterStateError("Erro ao cadastrar usuário");
+            _state = RegisterStateError(
+              "Erro ao cadastrar usuário ${e.toString()}",
+            );
         }
       } else {
-        _state = RegisterStateError("Erro ao cadastrar usuário");
+        _state = RegisterStateError(
+          "Erro ao cadastrar usuário ${e.toString()}",
+        );
       }
       notifyListeners();
     }
