@@ -10,6 +10,7 @@ import 'package:alba/ui/progresso/progresso_viewmodel.dart';
 import 'package:alba/ui/tarefas/gerenciamento_tarefas_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -26,6 +27,7 @@ class _HomeScreenState extends State<HomeScreen> {
     const InicioScreen(),
     const GeraciamentoMetasScreen(),
     const GerenciamentoTarefasScreen(),
+    const SizedBox(), // ALBA (Dummy para manter os indices)
     ChangeNotifierProvider(create: (context) => ProgressViewModel(),
         child: const ProgressScreen()
         ), // Progresso
@@ -40,7 +42,15 @@ class _HomeScreenState extends State<HomeScreen> {
       body: _screens[_selectedIndex],
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
-        onTap: (index) {
+        onTap: (index) async {
+          if (index == 3) {
+            // Número oficial da ALBA (pode ser ajustado aqui)
+            final url = Uri.parse('https://wa.me/5581995705981');
+            if (await canLaunchUrl(url)) {
+              await launchUrl(url, mode: LaunchMode.externalApplication);
+            }
+            return;
+          }
           setState(() {
             _selectedIndex = index;
           });
@@ -49,22 +59,27 @@ class _HomeScreenState extends State<HomeScreen> {
         selectedItemColor: context.colors.whiteColor,
         unselectedItemColor: Color(0xFFB3CCFF),
         type: BottomNavigationBarType.fixed,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Início'),
-          BottomNavigationBarItem(icon: Icon(Icons.flag), label: 'Metas'),
-          BottomNavigationBarItem(
+        items: [
+          const BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Início'),
+          const BottomNavigationBarItem(icon: Icon(Icons.flag), label: 'Metas'),
+          const BottomNavigationBarItem(
             icon: Icon(Icons.check_circle),
             label: 'Tarefas',
           ),
           BottomNavigationBarItem(
+            icon: Image.asset('assets/images/logo.png', width: 24, height: 24, color: const Color(0xFFB3CCFF)),
+            activeIcon: Image.asset('assets/images/logo.png', width: 24, height: 24, color: context.colors.whiteColor),
+            label: 'ALBA',
+          ),
+          const BottomNavigationBarItem(
             icon: Icon(Icons.bar_chart),
             label: 'Progresso',
           ),
-          BottomNavigationBarItem(
+          const BottomNavigationBarItem(
             icon: Icon(Icons.flash_on),
             label: 'On-Demand',
           ),
-          BottomNavigationBarItem(icon: Icon(Icons.menu), label: 'Menu'),
+          const BottomNavigationBarItem(icon: Icon(Icons.menu), label: 'Menu'),
         ],
       ),
     );
