@@ -35,52 +35,136 @@ class _HomeScreenState extends State<HomeScreen> {
     const _ProximamentScreen(), // Menu
   ];
 
+  Future<void> _openAlbaWhatsapp() async {
+    // NÃºmero oficial da ALBA (pode ser ajustado aqui)
+    final url = Uri.parse('https://wa.me/5581995705981');
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: context.colors.whiteColor,
       body: _screens[_selectedIndex],
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        onTap: (index) async {
-          if (index == 3) {
-            // Número oficial da ALBA (pode ser ajustado aqui)
-            final url = Uri.parse('https://wa.me/5581995705981');
-            if (await canLaunchUrl(url)) {
-              await launchUrl(url, mode: LaunchMode.externalApplication);
-            }
-            return;
-          }
-          setState(() {
-            _selectedIndex = index;
-          });
-        },
-        backgroundColor: context.colors.azulAlba,
-        selectedItemColor: context.colors.whiteColor,
-        unselectedItemColor: Color(0xFFB3CCFF),
-        type: BottomNavigationBarType.fixed,
-        items: [
-          const BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Início'),
-          const BottomNavigationBarItem(icon: Icon(Icons.flag), label: 'Metas'),
-          const BottomNavigationBarItem(
-            icon: Icon(Icons.check_circle),
-            label: 'Tarefas',
+      bottomNavigationBar: SizedBox(
+        height: 92,
+        child: Stack(
+          clipBehavior: Clip.none,
+          alignment: Alignment.bottomCenter,
+          children: [
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: BottomNavigationBar(
+                currentIndex: _selectedIndex,
+                onTap: (index) async {
+                  if (index == 3) {
+                    await _openAlbaWhatsapp();
+                    return;
+                  }
+                  setState(() {
+                    _selectedIndex = index;
+                  });
+                },
+                backgroundColor: context.colors.azulAlba,
+                selectedItemColor: context.colors.whiteColor,
+                unselectedItemColor: Color(0xFFB3CCFF),
+                type: BottomNavigationBarType.fixed,
+                items: [
+                  const BottomNavigationBarItem(
+                    icon: Icon(Icons.home),
+                    label: 'Início',
+                  ),
+                  const BottomNavigationBarItem(
+                    icon: Icon(Icons.flag),
+                    label: 'Metas',
+                  ),
+                  const BottomNavigationBarItem(
+                    icon: Icon(Icons.check_circle),
+                    label: 'Tarefas',
+                  ),
+                  const BottomNavigationBarItem(
+                    icon: SizedBox.shrink(),
+                    activeIcon: SizedBox.shrink(),
+                    label: '',
+                  ),
+                  const BottomNavigationBarItem(
+                    icon: Icon(Icons.bar_chart),
+                    label: 'Progresso',
+                  ),
+                  const BottomNavigationBarItem(
+                    icon: Icon(Icons.flash_on),
+                    label: 'On-Demand',
+                  ),
+                  const BottomNavigationBarItem(
+                    icon: Icon(Icons.menu),
+                    label: 'Menu',
+                  ),
+                ],
+              ),
+            ),
+            Positioned(top: 0, child: _AlbaNavButton(onTap: _openAlbaWhatsapp)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AlbaNavButton extends StatefulWidget {
+  final VoidCallback onTap;
+
+  const _AlbaNavButton({required this.onTap});
+
+  @override
+  State<_AlbaNavButton> createState() => _AlbaNavButtonState();
+}
+
+class _AlbaNavButtonState extends State<_AlbaNavButton> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedScale(
+          scale: _isHovered ? 1.12 : 1,
+          duration: const Duration(milliseconds: 160),
+          curve: Curves.easeOut,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 160),
+            curve: Curves.easeOut,
+            width: 62,
+            height: 62,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: const Color(0xFF7FE2E1),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0x33000000),
+                  blurRadius: _isHovered ? 12 : 8,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+            alignment: Alignment.center,
+            child: const Text(
+              'ALBA',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ),
-          BottomNavigationBarItem(
-            icon: Image.asset('assets/images/logo.png', width: 24, height: 24, color: const Color(0xFFB3CCFF)),
-            activeIcon: Image.asset('assets/images/logo.png', width: 24, height: 24, color: context.colors.whiteColor),
-            label: 'ALBA',
-          ),
-          const BottomNavigationBarItem(
-            icon: Icon(Icons.bar_chart),
-            label: 'Progresso',
-          ),
-          const BottomNavigationBarItem(
-            icon: Icon(Icons.flash_on),
-            label: 'On-Demand',
-          ),
-          const BottomNavigationBarItem(icon: Icon(Icons.menu), label: 'Menu'),
-        ],
+        ),
       ),
     );
   }
