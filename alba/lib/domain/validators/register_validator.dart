@@ -26,6 +26,8 @@ class RegisterValidator extends LucidValidator<CredentialsRegisterDto> {
       key: 'confirmPassword',
       label: 'confirmar senha',
     ).equalTo((dto) => dto.password, message: 'As senhas não coincidem');
+
+    ruleFor((dto) => dto.phone, key: 'phone').notEmpty().minLength(11);
   }
 }
 

@@ -24,7 +24,8 @@ dependencies:
   fl_chart: ^1.2.0
   connectivity_plus: ^6.0.5
   internet_connection_checker_plus: ^2.5.2
-  url_launcher: ^6.3.2
+  mask_text_input_formatter: ^2.9.0
+  country_code_picker: ^3.4.1
 
 dev_dependencies:
   flutter_test:

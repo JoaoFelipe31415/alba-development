@@ -67,10 +67,14 @@ class AuthRepository {
       var data = {
         'uid': uid,
         'email': dto.email,
+        'phone': dto.phone,
         'data_cadastro': FieldValue.serverTimestamp(),
       };
 
-      await FirebaseFirestore.instance.collection('Users').doc(uid).set(data);
+      await FirebaseFirestore.instance
+          .collection('Users')
+          .doc(dto.phone)
+          .set(data);
     } catch (e) {
       rethrow;
     }

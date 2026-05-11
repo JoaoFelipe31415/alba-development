@@ -2,11 +2,13 @@ class CredentialsRegisterDto {
   String email;
   String password;
   String confirmPassword;
+  String phone;
 
   CredentialsRegisterDto({
     this.email = "",
     this.password = "",
     this.confirmPassword = "",
+    this.phone = "",
   });
 
   void setEmail(String email) {
@@ -19,5 +21,9 @@ class CredentialsRegisterDto {
 
   void setConfirmPassword(String confirmPassword) {
     this.confirmPassword = confirmPassword;
+  }
+
+  void setPhone(String phone) {
+    this.phone = phone;
   }
 }
