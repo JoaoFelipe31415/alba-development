@@ -48,67 +48,48 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       backgroundColor: context.colors.whiteColor,
       body: _screens[_selectedIndex],
-      bottomNavigationBar: SizedBox(
-        height: 92,
-        child: Stack(
-          clipBehavior: Clip.none,
-          alignment: Alignment.bottomCenter,
-          children: [
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: BottomNavigationBar(
-                currentIndex: _selectedIndex,
-                onTap: (index) async {
-                  if (index == 3) {
-                    await _openAlbaWhatsapp();
-                    return;
-                  }
-                  setState(() {
-                    _selectedIndex = index;
-                  });
-                },
-                backgroundColor: context.colors.azulAlba,
-                selectedItemColor: context.colors.whiteColor,
-                unselectedItemColor: Color(0xFFB3CCFF),
-                type: BottomNavigationBarType.fixed,
-                items: [
-                  const BottomNavigationBarItem(
-                    icon: Icon(Icons.home),
-                    label: 'Início',
-                  ),
-                  const BottomNavigationBarItem(
-                    icon: Icon(Icons.flag),
-                    label: 'Metas',
-                  ),
-                  const BottomNavigationBarItem(
-                    icon: Icon(Icons.check_circle),
-                    label: 'Tarefas',
-                  ),
-                  const BottomNavigationBarItem(
-                    icon: SizedBox.shrink(),
-                    activeIcon: SizedBox.shrink(),
-                    label: '',
-                  ),
-                  const BottomNavigationBarItem(
-                    icon: Icon(Icons.bar_chart),
-                    label: 'Progresso',
-                  ),
-                  const BottomNavigationBarItem(
-                    icon: Icon(Icons.flash_on),
-                    label: 'On-Demand',
-                  ),
-                  const BottomNavigationBarItem(
-                    icon: Icon(Icons.menu),
-                    label: 'Menu',
-                  ),
-                ],
-              ),
-            ),
-            Positioned(top: 0, child: _AlbaNavButton(onTap: _openAlbaWhatsapp)),
-          ],
-        ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+      floatingActionButton: _AlbaNavButton(onTap: _openAlbaWhatsapp),
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _selectedIndex,
+        onTap: (index) async {
+          if (index == 3) {
+            await _openAlbaWhatsapp();
+            return;
+          }
+          setState(() {
+            _selectedIndex = index;
+          });
+        },
+        backgroundColor: context.colors.azulAlba,
+        selectedItemColor: context.colors.whiteColor,
+        unselectedItemColor: Color(0xFFB3CCFF),
+        type: BottomNavigationBarType.fixed,
+        items: [
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.home),
+            label: 'Início',
+          ),
+          const BottomNavigationBarItem(icon: Icon(Icons.flag), label: 'Metas'),
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.check_circle),
+            label: 'Tarefas',
+          ),
+          const BottomNavigationBarItem(
+            icon: SizedBox.shrink(),
+            activeIcon: SizedBox.shrink(),
+            label: '',
+          ),
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.bar_chart),
+            label: 'Progresso',
+          ),
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.flash_on),
+            label: 'On-Demand',
+          ),
+          const BottomNavigationBarItem(icon: Icon(Icons.menu), label: 'Menu'),
+        ],
       ),
     );
   }
