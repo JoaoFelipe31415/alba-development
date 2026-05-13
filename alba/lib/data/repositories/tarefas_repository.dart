@@ -1,4 +1,6 @@
+import 'package:alba/data/services/recorrencia_service.dart';
 import 'package:alba/domain/dto/tarefa_dto.dart';
+import 'package:alba/domain/entities/recorrencia.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:alba/data/services/conexao_service.dart';
@@ -35,6 +37,11 @@ class TarefasRepository {
 
       await docRef.set(tarefa.toMap());
 
+      if (tarefa.tipoRecorrencia != TipoRecorrencia.naoRepete &&
+          tarefa.dataInicial != null) {
+        await _criarTarefasRecorrentes(tarefa);
+      }
+
       return docRef.id;
     } on FirebaseException catch (e) {
       print('ERRO FIREBASE criarTarefa: code=${e.code}, message=${e.message}');
@@ -42,6 +49,42 @@ class TarefasRepository {
     } catch (e) {
       print('ERRO GERAL criarTarefa: $e');
       rethrow;
+    }
+  }
+
+  Future<void> _criarTarefasRecorrentes(TarefaDto tarefaOriginal) async {
+    try {
+      final ocorrencias = RecorrenciaService.gerarProximasOcorrencias(
+        dataInicial: tarefaOriginal.dataInicial!,
+        tipo: tarefaOriginal.tipoRecorrencia,
+        configuracao: tarefaOriginal.configuracaoRecorrencia,
+        quantidade: 12,
+      );
+
+      for (int i = 1; i < ocorrencias.length; i++) {
+        final tarefaRecorrente = TarefaDto(
+          tituloTarefa: tarefaOriginal.tituloTarefa,
+          diasRealizacao: tarefaOriginal.diasRealizacao,
+          horario: tarefaOriginal.horario,
+          horarioInicio: tarefaOriginal.horarioInicio,
+          horarioFim: tarefaOriginal.horarioFim,
+          dataInicial: ocorrencias[i],
+          metaId: tarefaOriginal.metaId,
+          tituloMeta: tarefaOriginal.tituloMeta,
+          tag: tarefaOriginal.tag,
+          status: 'pendente',
+          userId: _userId,
+          dataCriacao: DateTime.now(),
+          tipoRecorrencia: TipoRecorrencia.naoRepete,
+          configuracaoRecorrencia: null,
+        );
+
+        final docRef = _firestore.collection(_collection).doc();
+        tarefaRecorrente.id = docRef.id;
+        await docRef.set(tarefaRecorrente.toMap());
+      }
+    } catch (e) {
+      print('AVISO: Erro ao criar tarefas recorrentes: $e');
     }
   }
 
@@ -151,10 +194,17 @@ class TarefasRepository {
         'tituloTarefa': tarefa.tituloTarefa,
         'diasRealizacao': tarefa.diasRealizacao,
         'horario': tarefa.horario,
+        'horarioInicio': tarefa.horarioInicio,
+        'horarioFim': tarefa.horarioFim,
+        'dataInicial': tarefa.dataInicial != null
+            ? Timestamp.fromDate(tarefa.dataInicial!)
+            : null,
         'metaId': tarefa.metaId,
         'tituloMeta': tarefa.tituloMeta,
         'tag': tarefa.tag,
         'status': tarefa.status,
+        'tipoRecorrencia': tarefa.tipoRecorrencia.value,
+        'configuracaoRecorrencia': tarefa.configuracaoRecorrencia?.toMap(),
       };
 
       await _firestore
