@@ -1,3 +1,4 @@
+import 'package:alba/domain/entities/recorrencia.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class TarefaDto {
@@ -5,26 +6,36 @@ class TarefaDto {
   String tituloTarefa;
   List<String> diasRealizacao;
   String? horario;
+  String? horarioInicio;
+  String? horarioFim;
+  DateTime? dataInicial;
   String? metaId;
   String? tituloMeta;
-  String? tag; // 👈 NOVO
+  String? tag;
   String status;
   String userId;
   DateTime dataCriacao;
   DateTime? dataConclusao;
-  
+  TipoRecorrencia tipoRecorrencia;
+  ConfiguracaoRecorrencia? configuracaoRecorrencia;
+
   TarefaDto({
     this.id,
     required this.tituloTarefa,
     required this.diasRealizacao,
     this.horario,
+    this.horarioInicio,
+    this.horarioFim,
+    this.dataInicial,
     this.metaId,
     this.tituloMeta,
-    this.tag, // 👈 NOVO
+    this.tag,
     required this.status,
     required this.userId,
     required this.dataCriacao,
     this.dataConclusao,
+    this.tipoRecorrencia = TipoRecorrencia.naoRepete,
+    this.configuracaoRecorrencia,
   });
 
   void setId(String value) {
@@ -41,6 +52,18 @@ class TarefaDto {
 
   void setHorario(String? value) {
     horario = value;
+  }
+
+  void setHorarioInicio(String? value) {
+    horarioInicio = value;
+  }
+
+  void setHorarioFim(String? value) {
+    horarioFim = value;
+  }
+
+  void setDataInicial(DateTime? value) {
+    dataInicial = value;
   }
 
   void setMetaId(String? value) {
@@ -67,6 +90,14 @@ class TarefaDto {
     dataCriacao = value;
   }
 
+  void setTipoRecorrencia(TipoRecorrencia value) {
+    tipoRecorrencia = value;
+  }
+
+  void setConfiguracaoRecorrencia(ConfiguracaoRecorrencia? value) {
+    configuracaoRecorrencia = value;
+  }
+
   Map<String, dynamic> toMap() {
     return {
       'id': id,
@@ -74,12 +105,21 @@ class TarefaDto {
       'tituloTarefa': tituloTarefa,
       'diasRealizacao': diasRealizacao,
       'horario': horario,
+      'horarioInicio': horarioInicio,
+      'horarioFim': horarioFim,
+      'dataInicial': dataInicial != null
+          ? Timestamp.fromDate(dataInicial!)
+          : null,
       'metaId': metaId,
       'tituloMeta': tituloMeta,
-      'tag': tag, // 👈 NOVO
+      'tag': tag,
       'status': status,
       'dataCriacao': Timestamp.fromDate(dataCriacao),
-      'dataConclusao': dataConclusao != null ? Timestamp.fromDate(dataConclusao!): null,
+      'dataConclusao': dataConclusao != null
+          ? Timestamp.fromDate(dataConclusao!)
+          : null,
+      'tipoRecorrencia': tipoRecorrencia.value,
+      'configuracaoRecorrencia': configuracaoRecorrencia?.toMap(),
     };
   }
 
@@ -89,7 +129,7 @@ class TarefaDto {
       if (valor is String) return valor;
 
       try {
-        return valor.id; 
+        return valor.id;
       } catch (e) {
         return valor.toString();
       }
@@ -100,17 +140,28 @@ class TarefaDto {
       tituloTarefa: data['tituloTarefa'] ?? '',
       diasRealizacao: List<String>.from(data['diasRealizacao'] ?? []),
       horario: data['horario'],
-      metaId: _tratarString(data['metaId']), // 👈 Ajustado
+      horarioInicio: data['horarioInicio'],
+      horarioFim: data['horarioFim'],
+      dataInicial: data['dataInicial'] != null
+          ? (data['dataInicial'] as dynamic).toDate()
+          : null,
+      metaId: _tratarString(data['metaId']),
       tituloMeta: data['tituloMeta'],
       tag: data['tag'],
       status: data['status'] ?? 'pendente',
-      userId: _tratarString(data['userId']), // 👈 Ajustado
-      dataCriacao: data['dataCriacao'] != null 
-          ? (data['dataCriacao'] as dynamic).toDate() 
+      userId: _tratarString(data['userId']),
+      dataCriacao: data['dataCriacao'] != null
+          ? (data['dataCriacao'] as dynamic).toDate()
           : DateTime.now(),
       dataConclusao: data['dataConclusao'] != null
           ? (data['dataConclusao'] as dynamic).toDate()
-          :null,
+          : null,
+      tipoRecorrencia: TipoRecorrencia.fromString(
+        data['tipoRecorrencia'] ?? '',
+      ),
+      configuracaoRecorrencia: ConfiguracaoRecorrencia.fromMap(
+        data['configuracaoRecorrencia'],
+      ),
     );
   }
-} 
+}

@@ -48,10 +48,7 @@ class TarefaValidator {
     return null;
   }
 
-  static String? validateMeta({
-    required bool vincularMeta,
-    String? metaId,
-  }) {
+  static String? validateMeta({required bool vincularMeta, String? metaId}) {
     if (vincularMeta && (metaId == null || metaId.isEmpty)) {
       return 'Preencha todos os campos obrigatórios.';
     }
@@ -60,5 +57,49 @@ class TarefaValidator {
 
   static bool isHorarioValido(String? value) {
     return validateHorario(value) == null;
+  }
+
+  static String? validateHorarioInicio(String? value) {
+    if (value == null || value.isEmpty) {
+      return null;
+    }
+
+    return validateHorario(value);
+  }
+
+  static String? validateHorarioFim(String? value) {
+    if (value == null || value.isEmpty) {
+      return null;
+    }
+
+    return validateHorario(value);
+  }
+
+  static String? validateIntervaloHorario(String? inicio, String? fim) {
+    if ((inicio == null || inicio.isEmpty) && (fim == null || fim.isEmpty)) {
+      return null;
+    }
+
+    if ((inicio == null || inicio.isEmpty) || (fim == null || fim.isEmpty)) {
+      return 'Informe horário inicial e final válidos.';
+    }
+
+    if (validateHorario(inicio) != null || validateHorario(fim) != null) {
+      return 'Informe horários válidos no formato HH:MM.';
+    }
+
+    final horaInicio = int.parse(inicio.split(':')[0]);
+    final minutoInicio = int.parse(inicio.split(':')[1]);
+    final horaFim = int.parse(fim.split(':')[0]);
+    final minutoFim = int.parse(fim.split(':')[1]);
+
+    final minutosInicio = horaInicio * 60 + minutoInicio;
+    final minutosFim = horaFim * 60 + minutoFim;
+
+    if (minutosFim <= minutosInicio) {
+      return 'O horário final deve ser maior que o inicial.';
+    }
+
+    return null;
   }
 }

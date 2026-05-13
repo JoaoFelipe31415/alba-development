@@ -163,39 +163,6 @@ class _GeraciamentoMetasScreenState extends State<GeraciamentoMetasScreen> {
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Row(
-              children: [
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: const Color(0xFF84F41E),
-                  ),
-                  child: const Icon(Icons.add, color: Colors.white, size: 24),
-                ),
-                const SizedBox(width: 12),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    GestureDetector(
-                      onTap: _navigateToCriarMeta,
-                      child: const Text(
-                        'Criar Meta',
-                        style: TextStyle(
-                          color: Color(0xFF0532AF),
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: TextField(
               controller: searchController,
