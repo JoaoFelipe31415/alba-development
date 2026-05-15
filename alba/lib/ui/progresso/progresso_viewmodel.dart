@@ -35,26 +35,21 @@ class ProgressViewModel extends ChangeNotifier {
     DateTime dataFim = DateTime.now();
     if (isMensal) {
       dataInicio = DateTime(agora.year, agora.month, 1);
-      dataFim = DateTime(
-        agora.year,
-        agora.month + 1,
-        0,
-        23,
-        59,
-        59,
-      ); // Último dia do mês
+      dataFim = DateTime(agora.year, agora.month + 1, 0, 23, 59, 59);
     } else {
       dataInicio = agora.subtract(Duration(days: agora.weekday % 7));
       dataInicio = DateTime(dataInicio.year, dataInicio.month, dataInicio.day);
-      // dataFim para semana pode ser o agora ou o próximo sábado
-      dataFim = dataInicio.add(const Duration(days: 6, hours: 23, minutes: 59));
+
+      dataFim = dataInicio.add(
+        const Duration(
+          days: 6,
+          hours: 23,
+          minutes: 59,
+          seconds: 59,
+          milliseconds: 999,
+        ),
+      );
     }
-    // if (isMensal) {
-    //   dataInicio = DateTime(agora.year, agora.month, 1);
-    // } else {
-    //   dataInicio = agora.subtract(Duration(days: agora.weekday % 7));
-    //   dataInicio = DateTime(dataInicio.year, dataInicio.month, dataInicio.day);
-    // }
 
     if (uid != null) {
       final dadosJson = await _repository.obterProgresso(uid);
@@ -63,6 +58,7 @@ class ProgressViewModel extends ChangeNotifier {
       final monitoramentoPeriodo = await _repository.obterMonitoramentoPorData(
         uid,
         dataInicio,
+        dataFim,
       );
       final todasAsTarefas = await _tarefasRepository.obterTarefas();
 
@@ -82,7 +78,7 @@ class ProgressViewModel extends ChangeNotifier {
 
       _processarProdutividadePorPeriodo(todasAsTarefas, dataInicio, dataFim);
 
-      _processarEstatisticasDescanso(monitoramentoPeriodo, dataInicio);
+      _processarEstatisticasDescanso(monitoramentoPeriodo, dataInicio, dataFim);
     } else {
       data = ProgressDTO.fromFirestore({});
     }
@@ -99,7 +95,7 @@ class ProgressViewModel extends ChangeNotifier {
     for (var doc in monitoramento) {
       if (doc['data'] != null) {
         DateTime dataResposta = (doc['data'] as Timestamp).toDate();
-        // Filtra para garantir que o emoji é desta semana
+
         if (dataResposta.isAfter(inicioSemana)) {
           int indiceDia = dataResposta.weekday % 7;
           weeklyMood[indiceDia] = _mapMood(doc['sentimento'] ?? "");
@@ -174,7 +170,6 @@ class ProgressViewModel extends ChangeNotifier {
       int totalC = concluidasMes.reduce((a, b) => a + b);
       data!.completionRate = totalP > 0 ? ((totalC / totalP) * 100).round() : 0;
 
-      // Gera as 4 barras para o gráfico
       data!.weeklyProductivity = List.generate(4, (i) {
         return BarDataModel(
           label: "Sem ${i + 1}",
@@ -188,7 +183,6 @@ class ProgressViewModel extends ChangeNotifier {
       List<int> concluidas = List.filled(7, 0);
 
       for (var tarefa in tarefas) {
-        // Criamos uma variável para facilitar a leitura do filtro
         bool dentroDoPeriodo =
             (tarefa.dataCriacao.isAfter(dataInicio) ||
                 tarefa.dataCriacao.isAtSameMomentAs(dataInicio)) &&
@@ -306,8 +300,9 @@ class ProgressViewModel extends ChangeNotifier {
     if (t.contains('procrastinação')) return 'Procrastinação';
     if (t.contains('cansaço')) return 'Cansaço';
     if (t.contains('faculdade')) return 'Prazos da Faculdade';
-    if (t.contains('negóc') || t.contains('negoc'))
+    if (t.contains('negóc') || t.contains('negoc')) {
       return 'Demandas do Negócio';
+    }
     return '';
   }
 
@@ -344,7 +339,6 @@ class ProgressViewModel extends ChangeNotifier {
     double totalDescanso = 0;
 
     for (var tarefa in tarefas) {
-      // Filtro rigoroso: entre dataInicio e dataFim
       bool dentroDoPeriodo =
           (tarefa.dataCriacao.isAfter(dataInicio) ||
               tarefa.dataCriacao.isAtSameMomentAs(dataInicio)) &&
@@ -353,7 +347,6 @@ class ProgressViewModel extends ChangeNotifier {
 
       if (dentroDoPeriodo) {
         String tag = (tarefa.tag ?? '').toLowerCase().trim();
-        // Usamos uma string YYYY-MM-DD para contar apenas DIAS ÚNICOS de foco
         String diaChave =
             "${tarefa.dataCriacao.year}-${tarefa.dataCriacao.month}-${tarefa.dataCriacao.day}";
 
@@ -367,8 +360,9 @@ class ProgressViewModel extends ChangeNotifier {
 
     for (var doc in monitoramento) {
       DateTime? dataDoc;
-      if (doc['data'] is Timestamp)
+      if (doc['data'] is Timestamp) {
         dataDoc = (doc['data'] as Timestamp).toDate();
+      }
       if (doc['data'] is DateTime) dataDoc = doc['data'] as DateTime;
 
       if (dataDoc != null) {
@@ -378,7 +372,6 @@ class ProgressViewModel extends ChangeNotifier {
             (dataDoc.isBefore(dataFim) || dataDoc.isAtSameMomentAs(dataFim));
 
         if (dentroDoPeriodoMonit && doc['tempoDescanso'] != null) {
-          // Converte a string ou num de descanso para double (horas)
           int minutos = _extrairMinutos(doc['tempoDescanso'].toString());
           totalDescanso += (minutos / 60);
         }
@@ -410,8 +403,9 @@ class ProgressViewModel extends ChangeNotifier {
   }
 
   String get feedbackFoco {
-    if (data == null || data!.focusDistribution.isEmpty)
+    if (data == null || data!.focusDistribution.isEmpty) {
       return "Carregando dados de foco...";
+    }
 
     final principal = data!.focusDistribution.reduce(
       (a, b) => a.value > b.value ? a : b,
@@ -433,6 +427,7 @@ class ProgressViewModel extends ChangeNotifier {
   void _processarEstatisticasDescanso(
     List<Map<String, dynamic>> monitoramento,
     DateTime dataInicio,
+    DateTime dataFim,
   ) {
     if (data == null) return;
 
@@ -443,8 +438,15 @@ class ProgressViewModel extends ChangeNotifier {
       } else if (doc['data'] is DateTime) {
         dataDoc = doc['data'] as DateTime;
       }
-      return dataDoc != null &&
-          (dataDoc.isAfter(dataInicio) || dataDoc.isAtSameMomentAs(dataInicio));
+
+      if (dataDoc == null) return false;
+
+      bool depoisDoInicio =
+          dataDoc.isAfter(dataInicio) || dataDoc.isAtSameMomentAs(dataInicio);
+      bool antesDoFim =
+          dataDoc.isBefore(dataFim) || dataDoc.isAtSameMomentAs(dataFim);
+
+      return depoisDoInicio && antesDoFim;
     }).toList();
 
     if (documentosFiltrados.isEmpty) {
@@ -502,8 +504,9 @@ class ProgressViewModel extends ChangeNotifier {
   }
 
   String get feedbackDescanso {
-    if (data == null || data!.restStats.isEmpty)
+    if (data == null || data!.restStats.isEmpty) {
       return "Sem dados de descanso para este período.";
+    }
 
     final frequente = data!.mostFrequentRest;
 
@@ -511,7 +514,7 @@ class ProgressViewModel extends ChangeNotifier {
       return "😎 Você está se mantendo produtiva, mas com pouco tempo de descanso real. Pequenos ajustes podem melhorar sua energia para a UFRPE e o projeto ALBA!";
     }
 
-    return "⚡ Excelente equilíbrio! Seu descanso está mantendo sua mente afiada, essencial para a sustentabilidade da ALBA a longo prazo.";
+    return "⚡ Excelente equilíbrio! Seu descanso está mantendo sua mente afiada, essencial para a sustentabilidade ao longo prazo.";
   }
 
   int _extrairMinutos(dynamic tempoRaw) {
