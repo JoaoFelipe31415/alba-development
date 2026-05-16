@@ -382,7 +382,7 @@ class _CriarMetaScreenState extends State<CriarMetaScreen> {
                           ),
                         )
                       : const Text(
-                          'Criar',
+                          'Criar Meta',
                           style: TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,

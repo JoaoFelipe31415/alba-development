@@ -474,7 +474,7 @@ class _GeraciamentoMetasScreenState extends State<GeraciamentoMetasScreen> {
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        backgroundColor: const Color(0xFF84F41E),
+        backgroundColor: const Color(0xFF0532AF),
         onPressed: _navigateToCriarMeta,
         child: const Icon(Icons.add, color: Colors.white),
       ),
