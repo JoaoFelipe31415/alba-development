@@ -8,6 +8,7 @@ import 'package:alba/ui/metas/gerenciamento_metas_screen.dart';
 import 'package:alba/ui/progresso/progresso_screen.dart';
 import 'package:alba/ui/progresso/progresso_viewmodel.dart';
 import 'package:alba/ui/tarefas/gerenciamento_tarefas_screen.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -25,35 +26,45 @@ class _HomeScreenState extends State<HomeScreen> {
 
   late final List<Widget> _screens = [
     const InicioScreen(),
-    const GeraciamentoMetasScreen(),
-    const GerenciamentoTarefasScreen(),
-    const SizedBox(), // ALBA (Dummy para manter os indices)
     ChangeNotifierProvider(create: (context) => ProgressViewModel(),
         child: const ProgressScreen()
         ), // Progresso
+    const SizedBox(), // ALBA (Dummy para manter os indices)
     const _ProximamentScreen(), // On-Demand
     const _ProximamentScreen(), // Menu
   ];
 
   Future<void> _openAlbaWhatsapp() async {
     // NÃºmero oficial da ALBA (pode ser ajustado aqui)
-    final url = Uri.parse('https://wa.me/5581995705981');
-    if (await canLaunchUrl(url)) {
-      await launchUrl(url, mode: LaunchMode.externalApplication);
+    final whatsappUrl = Uri.parse('whatsapp://send?phone=5581995705981');
+    final webUrl = Uri.parse('https://wa.me/5581995705981');
+    final shouldOpenWhatsappApp =
+        !kIsWeb && await canLaunchUrl(whatsappUrl);
+    final targetUrl = shouldOpenWhatsappApp ? whatsappUrl : webUrl;
+
+    final launched = await launchUrl(
+      targetUrl,
+      mode: LaunchMode.externalApplication,
+    );
+
+    if (!launched && targetUrl != webUrl) {
+      await launchUrl(webUrl, mode: LaunchMode.externalApplication);
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final selectedIndex = _selectedIndex.clamp(0, _screens.length - 1).toInt();
+
     return Scaffold(
       backgroundColor: context.colors.whiteColor,
-      body: _screens[_selectedIndex],
+      body: _screens[selectedIndex],
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       floatingActionButton: _AlbaNavButton(onTap: _openAlbaWhatsapp),
       bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
+        currentIndex: selectedIndex,
         onTap: (index) async {
-          if (index == 3) {
+          if (index == 2) {
             await _openAlbaWhatsapp();
             return;
           }
@@ -70,19 +81,14 @@ class _HomeScreenState extends State<HomeScreen> {
             icon: Icon(Icons.home),
             label: 'Início',
           ),
-          const BottomNavigationBarItem(icon: Icon(Icons.flag), label: 'Metas'),
           const BottomNavigationBarItem(
-            icon: Icon(Icons.check_circle),
-            label: 'Tarefas',
+            icon: Icon(Icons.bar_chart),
+            label: 'Progresso',
           ),
           const BottomNavigationBarItem(
             icon: SizedBox.shrink(),
             activeIcon: SizedBox.shrink(),
             label: '',
-          ),
-          const BottomNavigationBarItem(
-            icon: Icon(Icons.bar_chart),
-            label: 'Progresso',
           ),
           const BottomNavigationBarItem(
             icon: Icon(Icons.flash_on),
