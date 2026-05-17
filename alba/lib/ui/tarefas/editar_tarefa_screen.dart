@@ -187,15 +187,12 @@ class _EditarTarefaScreenState extends State<EditarTarefaScreen> {
             _tipoRecorrenciaSelecionado = tipo;
             _configuracaoRecorrencia = config;
 
-            // Auto-preencher dias baseado na frequência selecionada
             switch (tipo) {
               case TipoRecorrencia.diaria:
-                // Preencher todos os 7 dias
                 _diasSelecionados.clear();
                 _diasSelecionados.addAll(_diasSemana);
                 break;
               case TipoRecorrencia.segAVinco:
-                // Preencher apenas os dias úteis (seg-sex)
                 _diasSelecionados.clear();
                 _diasSelecionados.addAll([
                   'segunda',
@@ -206,10 +203,8 @@ class _EditarTarefaScreenState extends State<EditarTarefaScreen> {
                 ]);
                 break;
               case TipoRecorrencia.personalizado:
-                // Manter a configuração do modal
                 break;
               default:
-                // Limpar dias para outros tipos de frequência
                 _diasSelecionados.clear();
                 break;
             }
@@ -238,7 +233,6 @@ class _EditarTarefaScreenState extends State<EditarTarefaScreen> {
       return;
     }
 
-    // Validar dias apenas se frequência é personalizado
     if (_tipoRecorrenciaSelecionado == TipoRecorrencia.personalizado) {
       if (_diasSelecionados.isEmpty) {
         _mostrarErro(
