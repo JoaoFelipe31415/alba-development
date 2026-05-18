@@ -1,6 +1,5 @@
 import 'package:alba/data/repositories/metas_repository.dart';
 import 'package:alba/data/repositories/tarefas_repository.dart';
-import 'package:alba/data/services/recorrencia_service.dart';
 import 'package:alba/domain/dto/meta_dto.dart';
 import 'package:alba/domain/dto/tarefa_dto.dart';
 import 'package:alba/domain/entities/recorrencia.dart';
@@ -146,6 +145,28 @@ class _CriarTarefaScreenState extends State<CriarTarefaScreen> {
           setState(() {
             _tipoRecorrenciaSelecionado = tipo;
             _configuracaoRecorrencia = config;
+
+            switch (tipo) {
+              case TipoRecorrencia.diaria:
+                _diasSelecionados.clear();
+                _diasSelecionados.addAll(_diasSemana);
+                break;
+              case TipoRecorrencia.segAVinco:
+                _diasSelecionados.clear();
+                _diasSelecionados.addAll([
+                  'segunda',
+                  'terca',
+                  'quarta',
+                  'quinta',
+                  'sexta',
+                ]);
+                break;
+              case TipoRecorrencia.personalizado:
+                break;
+              default:
+                _diasSelecionados.clear();
+                break;
+            }
           });
         },
       ),
@@ -157,13 +178,11 @@ class _CriarTarefaScreenState extends State<CriarTarefaScreen> {
       return;
     }
 
-    // Validar data inicial
     if (_dataInicial == null) {
       _mostrarErro('Selecione a data inicial da tarefa.');
       return;
     }
 
-    // Validar horários se preenchidos
     final erroHorario = TarefaValidator.validateIntervaloHorario(
       _horarioInicio,
       _horarioFim,
@@ -171,6 +190,15 @@ class _CriarTarefaScreenState extends State<CriarTarefaScreen> {
     if (erroHorario != null) {
       _mostrarErro(erroHorario);
       return;
+    }
+
+    if (_tipoRecorrenciaSelecionado == TipoRecorrencia.personalizado) {
+      if (_diasSelecionados.isEmpty) {
+        _mostrarErro(
+          'Selecione pelo menos um dia da semana para recorrência personalizada.',
+        );
+        return;
+      }
     }
 
     if (_vincularMeta && _tagSelecionada == null) {
@@ -281,10 +309,13 @@ class _CriarTarefaScreenState extends State<CriarTarefaScreen> {
               _buildSectionLabel('Frequência', colors),
               _buildFrequenciaSelector(colors),
               const SizedBox(height: 28),
-              _buildSectionLabel('Dias de realização', colors),
-              const SizedBox(height: 12),
-              _buildDiasSelector(colors),
-              const SizedBox(height: 28),
+              if (_tipoRecorrenciaSelecionado ==
+                  TipoRecorrencia.personalizado) ...<Widget>[
+                _buildSectionLabel('Dias de realização', colors),
+                const SizedBox(height: 12),
+                _buildDiasSelector(colors),
+                const SizedBox(height: 28),
+              ],
               _buildSectionLabel('Horário (opcional)', colors),
               _buildHorarioSelector(colors),
               const SizedBox(height: 28),
