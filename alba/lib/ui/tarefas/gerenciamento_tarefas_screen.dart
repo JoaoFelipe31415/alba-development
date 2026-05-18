@@ -39,8 +39,6 @@ class _GerenciamentoTarefasScreenState
 
   String _busca = '';
   DateTime _dataSelecionada = DateTime.now();
-
-  // CHECK SOMENTE NO FRONT
   final Map<String, bool> _statusLocalConcluido = {};
 
   @override
@@ -183,18 +181,14 @@ class _GerenciamentoTarefasScreenState
   Future<void> _toggleStatusTarefa(TarefaDto tarefa) async {
     if (tarefa.id == null) return;
 
-    // 1. Definimos o novo status baseado no estado atual
     final estaConcluida = _estaConcluidaLocal(tarefa);
     final novoStatus = estaConcluida ? 'pendente' : 'concluida';
 
-    // 2. Atualizamos o visual imediatamente (feedback rápido para o usuário)
     _toggleStatusLocal(tarefa);
 
     try {
-      // 3. Enviamos para o Firebase
       await _tarefasRepository.atualizarStatus(tarefa.id!, novoStatus);
 
-      // Opcional: mostrar um feedback
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -203,7 +197,6 @@ class _GerenciamentoTarefasScreenState
         ),
       );
     } catch (e) {
-      // Se der erro no banco, voltamos o visual para o estado anterior
       _toggleStatusLocal(tarefa);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -236,37 +229,85 @@ class _GerenciamentoTarefasScreenState
   List<TarefaDto> _filtrarTarefasDoDiaSelecionado(List<TarefaDto> tarefas) {
     final diaSemanaSelecionado = _nomeDiaInterno(_dataSelecionada);
 
+    final dataSelecionadaLimpa = DateTime(
+      _dataSelecionada.year,
+      _dataSelecionada.month,
+      _dataSelecionada.day,
+    );
+
+    final titulosFilhosNoDia = tarefas
+        .where((t) {
+          final tipo = t.tipoRecorrencia.toString().toLowerCase();
+          if (tipo.contains('não repete') || tipo.contains('naorepete')) {
+            final dt = t.dataInicial ?? t.dataCriacao;
+            final dtCorrigida = dt.toLocal().add(const Duration(hours: 4));
+            return dtCorrigida.year == dataSelecionadaLimpa.year &&
+                dtCorrigida.month == dataSelecionadaLimpa.month &&
+                dtCorrigida.day == dataSelecionadaLimpa.day;
+          }
+          return false;
+        })
+        .map((t) => t.tituloTarefa.toLowerCase().trim())
+        .toSet();
+
     return tarefas.where((tarefa) {
       final naoConcluida = !_estaConcluidaLocal(tarefa);
       if (!naoConcluida) return false;
 
-      final tipo = tarefa.tipoRecorrencia.toLowerCase() ?? 'não repete';
+      final tipo = tarefa.tipoRecorrencia.toString().toLowerCase().replaceAll(
+        'tiporecorrencia.',
+        '',
+      );
 
-      // 1. Se for uma tarefa comum (Não Repete)
-      if (tipo == 'não repete') {
-        // Se não tiver data inicial por algum motivo, usa a de criação, evitando o crash
-        final dataParaComparar = tarefa.dataInicial ?? tarefa.dataCriacao;
-        return _mesmoDia(dataParaComparar, _dataSelecionada);
+      final dataDeInicioRaw = tarefa.dataInicial ?? tarefa.dataCriacao;
+      final dataDeInicio = dataDeInicioRaw.toLocal().add(
+        const Duration(hours: 4),
+      );
+
+      final dataInicioLimpa = DateTime(
+        dataDeInicio.year,
+        dataDeInicio.month,
+        dataDeInicio.day,
+      );
+
+      if (dataSelecionadaLimpa.isBefore(dataInicioLimpa)) {
+        return false;
       }
 
-      // 2. Se for uma tarefa Mensal
-      if (tipo == 'mensal') {
-        // Se a tarefa mensal antiga não tiver data inicial, ignora para não quebrar a tela
-        if (tarefa.dataInicial == null) return false;
-        return _mesmoDia(tarefa.dataInicial!, _dataSelecionada);
+      if (tipo.contains('não repete') || tipo.contains('naorepete')) {
+        return dataInicioLimpa.year == dataSelecionadaLimpa.year &&
+            dataInicioLimpa.month == dataSelecionadaLimpa.month &&
+            dataInicioLimpa.day == dataSelecionadaLimpa.day;
       }
 
-      // 3. Para as tarefas Diárias e Semanais antigas (que não usam data exata)
-      final bateDiaSemana = tarefa.diasRealizacao
-          .map((d) => d.toLowerCase())
-          .contains(diaSemanaSelecionado);
+      if (tipo.contains('mensal')) {
+        return dataInicioLimpa.day == dataSelecionadaLimpa.day;
+      }
 
-      return bateDiaSemana;
+      if (tipo.contains('semanal')) {
+        if (titulosFilhosNoDia.contains(
+          tarefa.tituloTarefa.toLowerCase().trim(),
+        )) {
+          return false;
+        }
+
+        return tarefa.diasRealizacao
+            .map((d) => d.toLowerCase().trim())
+            .contains(diaSemanaSelecionado.trim());
+      }
+
+      return tarefa.diasRealizacao
+          .map((d) => d.toLowerCase().trim())
+          .contains(diaSemanaSelecionado.trim());
     }).toList();
   }
 
   bool _mesmoDia(DateTime a, DateTime b) {
-    return a.year == b.year && a.month == b.month && a.day == b.day;
+    final aCorrigido = a.toLocal().add(const Duration(hours: 4));
+    final bCorrigido = b.toLocal();
+    return aCorrigido.year == bCorrigido.year &&
+        aCorrigido.month == bCorrigido.month &&
+        aCorrigido.day == bCorrigido.day;
   }
 
   String _formatarTag(String? tag) {
@@ -597,7 +638,15 @@ class _GerenciamentoTarefasScreenState
                   if (!snapshot.hasData) return const SizedBox();
 
                   final tarefas = snapshot.data!;
-                  if (tarefas.isEmpty) {
+
+                  final tarefasOrdenadas = List<TarefaDto>.from(tarefas);
+                  tarefasOrdenadas.sort((a, b) {
+                    final dataA = a.dataInicial ?? a.dataCriacao;
+                    final dataB = b.dataInicial ?? b.dataCriacao;
+                    return dataA.compareTo(dataB);
+                  });
+
+                  if (tarefasOrdenadas.isEmpty) {
                     return Center(
                       child: Text(
                         "Nenhuma tarefa neste mês.",
@@ -609,9 +658,9 @@ class _GerenciamentoTarefasScreenState
                   return ListView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
-                    itemCount: tarefas.length,
+                    itemCount: tarefasOrdenadas.length,
                     itemBuilder: (context, index) =>
-                        _buildTimelineTask(tarefas[index], colors),
+                        _buildTimelineTask(tarefasOrdenadas[index], colors),
                   );
                 },
               ),
@@ -715,13 +764,15 @@ class _GerenciamentoTarefasScreenState
   Widget _buildTimelineTask(TarefaDto tarefa, AppColors colors) {
     final concluida = _estaConcluidaLocal(tarefa);
 
+    final dataExibicao = tarefa.dataInicial ?? tarefa.dataCriacao;
+
     return IntrinsicHeight(
       child: Row(
         children: [
           Column(
             children: [
               Text(
-                tarefa.dataCriacao.day.toString().padLeft(2, '0'),
+                dataExibicao.day.toString().padLeft(2, '0'),
                 style: TextStyle(
                   color: colors.greyThree,
                   fontWeight: FontWeight.bold,

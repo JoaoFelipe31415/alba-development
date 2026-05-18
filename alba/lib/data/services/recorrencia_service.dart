@@ -15,49 +15,70 @@ class RecorrenciaService {
       return [dataInicial];
     }
 
-    DateTime dataAtual = dataInicial;
+    // Garante que a data inicial comece limpa, sem fuso quebrando a meia-noite
+    DateTime dataAtual = DateTime(
+      dataInicial.year,
+      dataInicial.month,
+      dataInicial.day,
+    );
 
     while (ocorrencias.length < quantidade && dataAtual.isBefore(dataLimite)) {
       switch (tipo) {
         case TipoRecorrencia.diaria:
-          dataAtual = dataAtual.add(const Duration(days: 1));
-          ocorrencias.add(dataAtual);
+          ocorrencias.add(dataAtual); // Adiciona o dia atual primeiro
+          dataAtual = DateTime(
+            dataAtual.year,
+            dataAtual.month,
+            dataAtual.day + 1,
+          );
           break;
 
         case TipoRecorrencia.segAVinco:
-          dataAtual = dataAtual.add(const Duration(days: 1));
+          ocorrencias.add(dataAtual); // Adiciona o dia atual primeiro
+          dataAtual = DateTime(
+            dataAtual.year,
+            dataAtual.month,
+            dataAtual.day + 1,
+          );
           while (dataAtual.weekday > 5) {
-            dataAtual = dataAtual.add(const Duration(days: 1));
+            dataAtual = DateTime(
+              dataAtual.year,
+              dataAtual.month,
+              dataAtual.day + 1,
+            );
           }
-          ocorrencias.add(dataAtual);
           break;
 
         case TipoRecorrencia.semanal:
-          dataAtual = dataAtual.add(const Duration(days: 7));
-          ocorrencias.add(dataAtual);
+          ocorrencias.add(dataAtual); // Adiciona o dia atual primeiro (Dia 20)
+          dataAtual = DateTime(
+            dataAtual.year,
+            dataAtual.month,
+            dataAtual.day + 7,
+          ); // Prepara o próximo (Dia 27)
           break;
 
         case TipoRecorrencia.mensal:
+          ocorrencias.add(dataAtual); // Adiciona o dia atual primeiro
           final proximoMes = DateTime(
             dataAtual.year,
             dataAtual.month + 1,
             dataAtual.day,
           );
-          if (proximoMes.month != dataAtual.month + 1) {
+          if (proximoMes.month != (dataAtual.month % 12) + 1) {
             dataAtual = DateTime(proximoMes.year, proximoMes.month, 0);
           } else {
             dataAtual = proximoMes;
           }
-          ocorrencias.add(dataAtual);
           break;
 
         case TipoRecorrencia.anual:
+          ocorrencias.add(dataAtual);
           dataAtual = DateTime(
             dataAtual.year + 1,
             dataAtual.month,
             dataAtual.day,
           );
-          ocorrencias.add(dataAtual);
           break;
 
         case TipoRecorrencia.personalizado:
@@ -65,7 +86,10 @@ class RecorrenciaService {
             _gerarOcorrenciasPersonalizadas(
               dataInicial: dataAtual,
               configuracao: configuracao!,
-              quantidade: quantidade - ocorrencias.length,
+              quantidade:
+                  quantidade -
+                  ocorrencias
+                      .length, // ✨ Corrigido aqui de quantity para quantidade
               dataLimite: dataLimite,
             ),
           );

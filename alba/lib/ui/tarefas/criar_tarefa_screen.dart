@@ -6,7 +6,6 @@ import 'package:alba/domain/dto/tarefa_dto.dart';
 import 'package:alba/domain/entities/recorrencia.dart';
 import 'package:alba/domain/validators/tarefa_validator.dart';
 import 'package:alba/ui/design_system/modals/frequencia_modal.dart';
-import 'package:alba/ui/design_system/widgets/horario_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:alba/ui/design_system/theme/app_colors.dart';
 
@@ -37,8 +36,6 @@ class _CriarTarefaScreenState extends State<CriarTarefaScreen> {
 
   TipoRecorrencia _tipoRecorrenciaSelecionado = TipoRecorrencia.naoRepete;
   ConfiguracaoRecorrencia? _configuracaoRecorrencia;
-  String? _horarioInicio;
-  String? _horarioFim;
   DateTime? _dataInicial;
 
   final List<String> _diasSemana = const [
@@ -101,7 +98,6 @@ class _CriarTarefaScreenState extends State<CriarTarefaScreen> {
 
   Future<void> _selecionarHorario() async {
     final agora = TimeOfDay.now();
-
     TimeOfDay initialTime = agora;
 
     if (_horarioController.text.isNotEmpty) {
@@ -136,44 +132,6 @@ class _CriarTarefaScreenState extends State<CriarTarefaScreen> {
     }
   }
 
-  // void _abrirModalFrequencia() {
-  //   showDialog(
-  //     context: context,
-  //     builder: (context) => FrequenciaModal(
-  //       tipoRecorrenciaInicial: _tipoRecorrenciaSelecionado,
-  //       configuracaoInicial: _configuracaoRecorrencia,
-  //       onConfirm: (tipo, config) {
-  //         setState(() {
-  //           _tipoRecorrenciaSelecionado = tipo;
-  //           _configuracaoRecorrencia = config;
-
-  //           switch (tipo) {
-  //             case TipoRecorrencia.diaria:
-  //               _diasSelecionados.clear();
-  //               _diasSelecionados.addAll(_diasSemana);
-  //               break;
-  //             case TipoRecorrencia.segAVinco:
-  //               _diasSelecionados.clear();
-  //               _diasSelecionados.addAll([
-  //                 'segunda',
-  //                 'terca',
-  //                 'quarta',
-  //                 'quinta',
-  //                 'sexta',
-  //               ]);
-  //               break;
-  //             case TipoRecorrencia.personalizado:
-  //               break;
-  //             default:
-  //               _diasSelecionados.clear();
-  //               break;
-  //           }
-  //         });
-  //       },
-  //     ),
-  //   );
-  // }
-
   void _abrirModalFrequencia() {
     showDialog(
       context: context,
@@ -201,7 +159,6 @@ class _CriarTarefaScreenState extends State<CriarTarefaScreen> {
                 ]);
                 break;
               case TipoRecorrencia.semanal:
-                // ✨ CORRIGIDO: Mapeia o dia da semana atual baseado na data selecionada
                 if (_dataInicial != null) {
                   final diasMapeados = [
                     'domingo',
@@ -231,130 +188,7 @@ class _CriarTarefaScreenState extends State<CriarTarefaScreen> {
     );
   }
 
-  // Future<void> _criarTarefa() async {
-  //   final erroTitulo = TarefaValidator.validateTitulo(_tituloController.text);
-  //   if (erroTitulo != null) {
-  //     _mostrarErro(erroTitulo);
-  //     return;
-  //   }
-
-  //   final erroDias = TarefaValidator.validateDias(
-  //     _diasSelecionados,
-  //     _tipoRecorrenciaSelecionado,
-  //   );
-  //   if (erroDias != null) {
-  //     _mostrarErro(erroDias);
-  //     return;
-  //   }
-
-  //   if (_dataInicial == null) {
-  //     _mostrarErro('Selecione a data inicial da tarefa.');
-  //     return;
-  //   }
-
-  //   final erroHorario = TarefaValidator.validateIntervaloHorario(
-  //     _horarioInicio,
-  //     _horarioFim,
-  //   );
-  //   if (erroHorario != null) {
-  //     _mostrarErro(erroHorario);
-  //     return;
-  //   }
-
-  //   if (_tipoRecorrenciaSelecionado == TipoRecorrencia.personalizado) {
-  //     if (_diasSelecionados.isEmpty) {
-  //       _mostrarErro(
-  //         'Selecione pelo menos um dia da semana para recorrência personalizada.',
-  //       );
-  //       return;
-  //     }
-  //   }
-
-  //   if (_tipoRecorrenciaSelecionado == TipoRecorrencia.personalizado) {
-  //     if (_diasSelecionados.isEmpty) {
-  //       _mostrarErro(
-  //         'Selecione pelo menos um dia da semana para recorrência personalizada.',
-  //       );
-  //       return;
-  //     }
-  //   }
-
-  //   if (_vincularMeta) {
-  //     if (_vincularMeta && _tagSelecionada == null) {
-  //       _mostrarErro('Selecione a categoria da meta.');
-  //       return;
-  //     }
-
-  //     final metaErro = TarefaValidator.validateMeta(
-  //       vincularMeta: _vincularMeta,
-  //       metaId: _metaSelecionada?.id,
-  //     );
-
-  //     if (metaErro != null) {
-  //       _mostrarErro(metaErro);
-  //       return;
-  //     }
-
-  //     try {
-  //       setState(() {
-  //         _salvando = true;
-  //       });
-
-  //       List<String> diasParaSalvar = List<String>.from(_diasSelecionados);
-  //       if (_tipoRecorrenciaSelecionado == TipoRecorrencia.mensal &&
-  //           _dataInicial != null) {
-  //         final mapeamentoDias = [
-  //           'domingo',
-  //           'segunda',
-  //           'terca',
-  //           'quarta',
-  //           'quinta',
-  //           'sexta',
-  //           'sabado',
-  //         ];
-  //         diasParaSalvar = [mapeamentoDias[_dataInicial!.weekday % 7]];
-  //       }
-
-  //       final usuarioLogado = FirebaseAuth.instance.currentUser;
-  //       final idUsuarioReal = usuarioLogado?.uid ?? '';
-
-  //       final tarefa = TarefaDto(
-  //         tituloTarefa: _tituloController.text.trim(),
-  //         diasRealizacao: diasParaSalvar,
-  //         horario: _horarioController.text.trim().isEmpty
-  //             ? null
-  //             : _horarioController.text.trim(),
-  //         horarioInicio: _horarioInicio,
-  //         horarioFim: _horarioFim,
-  //         dataInicial: _dataInicial,
-  //         metaId: _vincularMeta ? _metaSelecionada?.id : null,
-  //         tituloMeta: _vincularMeta ? _metaSelecionada?.tituloMeta : null,
-  //         tag: _vincularMeta ? _tagSelecionada : null,
-  //         status: 'pendente',
-  //         userId: idUsuarioReal,
-  //         dataCriacao: DateTime.now(),
-  //         tipoRecorrencia: _tipoRecorrenciaSelecionado,
-  //         configuracaoRecorrencia: _configuracaoRecorrencia,
-  //       );
-
-  //       await _tarefasRepository.criarTarefa(tarefa);
-
-  //       if (!mounted) return;
-  //       Navigator.pop(context);
-  //     } catch (e) {
-  //       _mostrarErro(e.toString().replaceFirst('Exception: ', ''));
-  //     } finally {
-  //       if (mounted) {
-  //         setState(() {
-  //           _salvando = false;
-  //         });
-  //       }
-  //     }
-  //   }
-  // }
-
   Future<void> _criarTarefa() async {
-    // 1. Validações de formato básicas
     final erroTitulo = TarefaValidator.validateTitulo(_tituloController.text);
     if (erroTitulo != null) {
       _mostrarErro(erroTitulo);
@@ -375,15 +209,6 @@ class _CriarTarefaScreenState extends State<CriarTarefaScreen> {
       return;
     }
 
-    final erroHorario = TarefaValidator.validateIntervaloHorario(
-      _horarioInicio,
-      _horarioFim,
-    );
-    if (erroHorario != null) {
-      _mostrarErro(erroHorario);
-      return;
-    }
-
     if (_tipoRecorrenciaSelecionado == TipoRecorrencia.personalizado) {
       if (_diasSelecionados.isEmpty) {
         _mostrarErro(
@@ -393,7 +218,6 @@ class _CriarTarefaScreenState extends State<CriarTarefaScreen> {
       }
     }
 
-    // ✨ TRAVA OBRIGATÓRIA: O usuário DEVE ativar o Switch de metas
     if (!_vincularMeta) {
       _mostrarErro(
         'Toda tarefa precisa estar vinculada a uma meta. Ative o campo abaixo.',
@@ -401,19 +225,16 @@ class _CriarTarefaScreenState extends State<CriarTarefaScreen> {
       return;
     }
 
-    // ✨ TRAVA OBRIGATÓRIA: Deve escolher se é Negócio ou Faculdade
     if (_tagSelecionada == null) {
       _mostrarErro('Selecione a categoria da meta (Negócio ou Faculdade).');
       return;
     }
 
-    // ✨ TRAVA OBRIGATÓRIA: Deve selecionar uma meta do Dropdown
     if (_metaSelecionada == null) {
       _mostrarErro('Por favor, selecione uma meta válida no campo.');
       return;
     }
 
-    // Validação extra do validador do projeto se houver
     final metaErro = TarefaValidator.validateMeta(
       vincularMeta: _vincularMeta,
       metaId: _metaSelecionada?.id,
@@ -423,7 +244,6 @@ class _CriarTarefaScreenState extends State<CriarTarefaScreen> {
       return;
     }
 
-    // 2. Fluxo de salvamento no Firebase
     try {
       setState(() {
         _salvando = true;
@@ -453,15 +273,12 @@ class _CriarTarefaScreenState extends State<CriarTarefaScreen> {
         horario: _horarioController.text.trim().isEmpty
             ? null
             : _horarioController.text.trim(),
-        horarioInicio: _horarioInicio,
-        horarioFim: _horarioFim,
+        horarioInicio: null, // Campo descontinuado
+        horarioFim: null, // Campo descontinuado
         dataInicial: _dataInicial,
-
-        // Dados validados e obrigatórios salvos com segurança
         metaId: _metaSelecionada!.id,
         tituloMeta: _metaSelecionada!.tituloMeta,
         tag: _tagSelecionada!,
-
         status: 'pendente',
         userId: idUsuarioReal,
         dataCriacao: DateTime.now(),
@@ -484,10 +301,10 @@ class _CriarTarefaScreenState extends State<CriarTarefaScreen> {
     }
   }
 
-  void _mostrarErro(String mensagem) {
+  void _mostrarErro(String mensaje) {
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(SnackBar(content: Text(mensagem)));
+    ).showSnackBar(SnackBar(content: Text(mensaje)));
   }
 
   @override
@@ -545,10 +362,9 @@ class _CriarTarefaScreenState extends State<CriarTarefaScreen> {
                 _buildDiasSelector(colors),
                 const SizedBox(height: 28),
               ],
+              // ✨ SELETOR ÚNICO ATIVADO
               _buildSectionLabel('Horário (opcional)', colors),
               _buildHorarioSelector(colors),
-              const SizedBox(height: 28),
-              _buildHorarioRange(colors),
               const SizedBox(height: 32),
               _buildMetaSection(colors),
               const SizedBox(height: 48),
@@ -667,19 +483,6 @@ class _CriarTarefaScreenState extends State<CriarTarefaScreen> {
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildHorarioRange(AppColors colors) {
-    return HorarioWidget(
-      horarioInicio: _horarioInicio,
-      horarioFim: _horarioFim,
-      onChanged: (inicio, fim) {
-        setState(() {
-          _horarioInicio = inicio;
-          _horarioFim = fim;
-        });
-      },
     );
   }
 

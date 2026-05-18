@@ -55,53 +55,78 @@ class TarefasRepository {
   Future<void> _criarTarefasRecorrentes(TarefaDto tarefaOriginal) async {
     try {
       List<DateTime> ocorrencias = [];
+      final dataInicial = tarefaOriginal.dataInicial!;
 
-      // ✨ SE FOR MENSAL: Faz o cálculo perfeito somando os meses um a um!
+      final dataLimiteAno = DateTime(dataInicial.year, 12, 31, 23, 59, 59);
+
       if (tarefaOriginal.tipoRecorrencia == TipoRecorrencia.mensal) {
-        DateTime dataAux = tarefaOriginal.dataInicial!;
-        // Adiciona a primeira (mês atual)
+        DateTime dataAux = dataInicial;
         ocorrencias.add(dataAux);
 
-        // Gera as próximas 11 ocorrências para os próximos meses
-        for (int i = 1; i < 12; i++) {
-          // Avança exatamente 1 mês mantendo o mesmo dia
-          dataAux = DateTime(dataAux.year, dataAux.month + 1, dataAux.day);
+        while (true) {
+          final proximoMes = DateTime(
+            dataAux.year,
+            dataAux.month + 1,
+            dataAux.day,
+          );
+
+          if (proximoMes.month != (dataAux.month % 12) + 1) {
+            dataAux = DateTime(proximoMes.year, proximoMes.month, 0);
+          } else {
+            dataAux = proximoMes;
+          }
+
+          if (dataAux.isAfter(dataLimiteAno)) {
+            break; // Travou no fim do ano!
+          }
           ocorrencias.add(dataAux);
         }
       } else {
-        // ✨ PARA OS OUTROS TIPOS (Semanal, Diário, Personalizado): Usa o serviço original
+        final mesesRestantes = 12 - dataInicial.month + 1;
+
         ocorrencias = RecorrenciaService.gerarProximasOcorrencias(
-          dataInicial: tarefaOriginal.dataInicial!,
+          dataInicial: dataInicial,
           tipo: tarefaOriginal.tipoRecorrencia,
           configuracao: tarefaOriginal.configuracaoRecorrencia,
-          quantidade: 12,
+          quantidade: 100,
+          mesesProximos: mesesRestantes,
         );
+        ocorrencias = ocorrencias
+            .where((dt) => !dt.isAfter(dataLimiteAno))
+            .toList();
       }
 
-      // Salva as repetições no Firebase (começa do índice 1 porque a primeira já foi salva no criarTarefa)
+      final batch = _firestore.batch();
+
       for (int i = 1; i < ocorrencias.length; i++) {
+        final dataProjetada = ocorrencias[i];
+        final docRef = _firestore.collection(_collection).doc();
+
         final tarefaRecorrente = TarefaDto(
           tituloTarefa: tarefaOriginal.tituloTarefa,
           diasRealizacao: tarefaOriginal.diasRealizacao,
           horario: tarefaOriginal.horario,
           horarioInicio: tarefaOriginal.horarioInicio,
           horarioFim: tarefaOriginal.horarioFim,
-          dataInicial:
-              ocorrencias[i], // ✨ Agora a data virá perfeita de mês em mês!
+          dataInicial: dataProjetada,
           metaId: tarefaOriginal.metaId,
           tituloMeta: tarefaOriginal.tituloMeta,
           tag: tarefaOriginal.tag,
           status: 'pendente',
           userId: _userId,
-          dataCriacao: DateTime.now(),
+          dataCriacao: dataProjetada,
           tipoRecorrencia: TipoRecorrencia.naoRepete,
           configuracaoRecorrencia: null,
         );
 
-        final docRef = _firestore.collection(_collection).doc();
-        tarefaRecorrente.id = docRef.id;
-        await docRef.set(tarefaRecorrente.toMap());
+        final dadosMap = tarefaRecorrente.toMap();
+        dadosMap['id'] = docRef.id;
+        dadosMap['tipoRecorrencia'] = 'não repete';
+
+        batch.set(docRef, dadosMap);
       }
+
+      await batch.commit();
     } catch (e) {
       print('AVISO: Erro ao criar tarefas recorrentes: $e');
     }
