@@ -28,6 +28,17 @@ class _HorarioWidgetState extends State<HorarioWidget> {
   }
 
   @override
+  void didUpdateWidget(covariant HorarioWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.horarioInicio != oldWidget.horarioInicio) {
+      inicioController.text = widget.horarioInicio ?? '';
+    }
+    if (widget.horarioFim != oldWidget.horarioFim) {
+      fimController.text = widget.horarioFim ?? '';
+    }
+  }
+
+  @override
   void dispose() {
     inicioController.dispose();
     fimController.dispose();

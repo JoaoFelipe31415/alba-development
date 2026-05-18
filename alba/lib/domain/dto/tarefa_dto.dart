@@ -127,12 +127,18 @@ class TarefaDto {
     String _tratarString(dynamic valor) {
       if (valor == null) return '';
       if (valor is String) return valor;
-
       try {
         return valor.id;
       } catch (e) {
         return valor.toString();
       }
+    }
+
+    // Função de segurança adicionada aqui para evitar o crash
+    DateTime? _converterTimestamp(dynamic campo) {
+      if (campo == null) return null;
+      if (campo is Timestamp) return campo.toDate();
+      return null;
     }
 
     return TarefaDto(
@@ -142,25 +148,21 @@ class TarefaDto {
       horario: data['horario'],
       horarioInicio: data['horarioInicio'],
       horarioFim: data['horarioFim'],
-      dataInicial: data['dataInicial'] != null
-          ? (data['dataInicial'] as dynamic).toDate()
-          : null,
+      dataInicial: _converterTimestamp(data['dataInicial']), // Alterado
       metaId: _tratarString(data['metaId']),
       tituloMeta: data['tituloMeta'],
       tag: data['tag'],
       status: data['status'] ?? 'pendente',
       userId: _tratarString(data['userId']),
-      dataCriacao: data['dataCriacao'] != null
-          ? (data['dataCriacao'] as dynamic).toDate()
-          : DateTime.now(),
-      dataConclusao: data['dataConclusao'] != null
-          ? (data['dataConclusao'] as dynamic).toDate()
-          : null,
+      dataCriacao:
+          _converterTimestamp(data['dataCriacao']) ??
+          DateTime.now(), // Alterado
+      dataConclusao: _converterTimestamp(data['dataConclusao']), // Alterado
       tipoRecorrencia: TipoRecorrencia.fromString(
         data['tipoRecorrencia'] ?? '',
       ),
       configuracaoRecorrencia: ConfiguracaoRecorrencia.fromMap(
-        data['configuracaoRecorrencia'],
+        data['configuracaoRecorrencia'] as Map<String, dynamic>?,
       ),
     );
   }

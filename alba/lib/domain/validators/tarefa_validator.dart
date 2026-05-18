@@ -1,3 +1,5 @@
+import 'package:alba/domain/entities/recorrencia.dart';
+
 class TarefaValidator {
   static const List<String> diasPermitidos = [
     'segunda',
@@ -22,12 +24,23 @@ class TarefaValidator {
     return null;
   }
 
-  static String? validateDias(List<String>? dias) {
-    if (dias == null || dias.isEmpty) {
-      return 'Selecione pelo menos um dia da semana.';
+  static String? validateDias(
+    List<String>? dias,
+    TipoRecorrencia tipoRecorrencia,
+  ) {
+    // Se a recorrência for automática, não obriga o usuário a selecionar dias na tela
+    if (tipoRecorrencia != TipoRecorrencia.personalizado) {
+      return null; // Libera o formulário direto para Mensal, Semanal, Diária, etc.
     }
 
-    final diasInvalidos = dias.where((dia) => !diasPermitidos.contains(dia));
+    // Se chegou até aqui é porque é Personalizado, então a lista não pode ser vazia
+    if (dias == null || dias.isEmpty) {
+      return 'Selecione pelo menos um dia da semana para a recorrência.';
+    }
+
+    final diasInvalidos = dias.where(
+      (dia) => !diasPermitidos.contains(dia.toLowerCase().trim()),
+    );
     if (diasInvalidos.isNotEmpty) {
       return 'Selecione apenas dias válidos da semana.';
     }

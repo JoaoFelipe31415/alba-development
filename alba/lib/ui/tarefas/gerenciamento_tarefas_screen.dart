@@ -193,7 +193,7 @@ class _GerenciamentoTarefasScreenState
     try {
       // 3. Enviamos para o Firebase
       await _tarefasRepository.atualizarStatus(tarefa.id!, novoStatus);
-      
+
       // Opcional: mostrar um feedback
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -234,16 +234,34 @@ class _GerenciamentoTarefasScreenState
   }
 
   List<TarefaDto> _filtrarTarefasDoDiaSelecionado(List<TarefaDto> tarefas) {
-    final diaSelecionado = _nomeDiaInterno(_dataSelecionada);
+    final diaSemanaSelecionado = _nomeDiaInterno(_dataSelecionada);
 
     return tarefas.where((tarefa) {
-      final bateDia = tarefa.diasRealizacao
-          .map((d) => d.toLowerCase())
-          .contains(diaSelecionado);
-
       final naoConcluida = !_estaConcluidaLocal(tarefa);
+      if (!naoConcluida) return false;
 
-      return bateDia && naoConcluida;
+      final tipo = tarefa.tipoRecorrencia.toLowerCase() ?? 'não repete';
+
+      // 1. Se for uma tarefa comum (Não Repete)
+      if (tipo == 'não repete') {
+        // Se não tiver data inicial por algum motivo, usa a de criação, evitando o crash
+        final dataParaComparar = tarefa.dataInicial ?? tarefa.dataCriacao;
+        return _mesmoDia(dataParaComparar, _dataSelecionada);
+      }
+
+      // 2. Se for uma tarefa Mensal
+      if (tipo == 'mensal') {
+        // Se a tarefa mensal antiga não tiver data inicial, ignora para não quebrar a tela
+        if (tarefa.dataInicial == null) return false;
+        return _mesmoDia(tarefa.dataInicial!, _dataSelecionada);
+      }
+
+      // 3. Para as tarefas Diárias e Semanais antigas (que não usam data exata)
+      final bateDiaSemana = tarefa.diasRealizacao
+          .map((d) => d.toLowerCase())
+          .contains(diaSemanaSelecionado);
+
+      return bateDiaSemana;
     }).toList();
   }
 

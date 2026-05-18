@@ -46,7 +46,16 @@ class _FrequenciaModalState extends State<FrequenciaModal> {
   void initState() {
     super.initState();
     tipoSelecionado = widget.tipoRecorrenciaInicial;
-    configuracaoTemp = widget.configuracaoInicial ?? ConfiguracaoRecorrencia();
+    if (widget.configuracaoInicial != null) {
+      configuracaoTemp = ConfiguracaoRecorrencia(
+        intervaloEmDias: widget.configuracaoInicial!.intervaloEmDias,
+        diasSemana: List<String>.from(
+          widget.configuracaoInicial!.diasSemana ?? [],
+        ),
+      );
+    } else {
+      configuracaoTemp = ConfiguracaoRecorrencia(diasSemana: []);
+    }
   }
 
   @override

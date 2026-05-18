@@ -37,6 +37,8 @@ enum TipoRecorrencia {
       orElse: () => TipoRecorrencia.naoRepete,
     );
   }
+
+  Object? toLowerCase() {}
 }
 
 class ConfiguracaoRecorrencia {

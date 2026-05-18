@@ -54,13 +54,31 @@ class TarefasRepository {
 
   Future<void> _criarTarefasRecorrentes(TarefaDto tarefaOriginal) async {
     try {
-      final ocorrencias = RecorrenciaService.gerarProximasOcorrencias(
-        dataInicial: tarefaOriginal.dataInicial!,
-        tipo: tarefaOriginal.tipoRecorrencia,
-        configuracao: tarefaOriginal.configuracaoRecorrencia,
-        quantidade: 12,
-      );
+      List<DateTime> ocorrencias = [];
 
+      // ✨ SE FOR MENSAL: Faz o cálculo perfeito somando os meses um a um!
+      if (tarefaOriginal.tipoRecorrencia == TipoRecorrencia.mensal) {
+        DateTime dataAux = tarefaOriginal.dataInicial!;
+        // Adiciona a primeira (mês atual)
+        ocorrencias.add(dataAux);
+
+        // Gera as próximas 11 ocorrências para os próximos meses
+        for (int i = 1; i < 12; i++) {
+          // Avança exatamente 1 mês mantendo o mesmo dia
+          dataAux = DateTime(dataAux.year, dataAux.month + 1, dataAux.day);
+          ocorrencias.add(dataAux);
+        }
+      } else {
+        // ✨ PARA OS OUTROS TIPOS (Semanal, Diário, Personalizado): Usa o serviço original
+        ocorrencias = RecorrenciaService.gerarProximasOcorrencias(
+          dataInicial: tarefaOriginal.dataInicial!,
+          tipo: tarefaOriginal.tipoRecorrencia,
+          configuracao: tarefaOriginal.configuracaoRecorrencia,
+          quantidade: 12,
+        );
+      }
+
+      // Salva as repetições no Firebase (começa do índice 1 porque a primeira já foi salva no criarTarefa)
       for (int i = 1; i < ocorrencias.length; i++) {
         final tarefaRecorrente = TarefaDto(
           tituloTarefa: tarefaOriginal.tituloTarefa,
@@ -68,7 +86,8 @@ class TarefasRepository {
           horario: tarefaOriginal.horario,
           horarioInicio: tarefaOriginal.horarioInicio,
           horarioFim: tarefaOriginal.horarioFim,
-          dataInicial: ocorrencias[i],
+          dataInicial:
+              ocorrencias[i], // ✨ Agora a data virá perfeita de mês em mês!
           metaId: tarefaOriginal.metaId,
           tituloMeta: tarefaOriginal.tituloMeta,
           tag: tarefaOriginal.tag,
@@ -331,12 +350,14 @@ class TarefasRepository {
 
               var bateMes = true;
               if (mes != null && mesesMap.containsKey(mes)) {
-                bateMes = tarefa.dataCriacao.month == mesesMap[mes];
+                bateMes =
+                    (tarefa.dataInicial ?? tarefa.dataCriacao).month ==
+                    mesesMap[mes];
               }
 
               var bateDia = true;
               if (dia != null) {
-                bateDia = tarefa.dataCriacao.day == dia;
+                bateDia = (tarefa.dataInicial ?? tarefa.dataCriacao).day == dia;
               }
 
               return bateTitulo && bateMes && bateDia;

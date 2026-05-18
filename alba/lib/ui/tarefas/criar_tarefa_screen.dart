@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:alba/data/repositories/metas_repository.dart';
 import 'package:alba/data/repositories/tarefas_repository.dart';
 import 'package:alba/domain/dto/meta_dto.dart';
@@ -29,7 +30,7 @@ class _CriarTarefaScreenState extends State<CriarTarefaScreen> {
   bool _salvando = false;
   bool _vincularMeta = false;
 
-  final List<String> _diasSelecionados = [];
+  List<String> _diasSelecionados = [];
   List<MetaDto> _metas = [];
   MetaDto? _metaSelecionada;
   String? _tagSelecionada;
@@ -135,6 +136,44 @@ class _CriarTarefaScreenState extends State<CriarTarefaScreen> {
     }
   }
 
+  // void _abrirModalFrequencia() {
+  //   showDialog(
+  //     context: context,
+  //     builder: (context) => FrequenciaModal(
+  //       tipoRecorrenciaInicial: _tipoRecorrenciaSelecionado,
+  //       configuracaoInicial: _configuracaoRecorrencia,
+  //       onConfirm: (tipo, config) {
+  //         setState(() {
+  //           _tipoRecorrenciaSelecionado = tipo;
+  //           _configuracaoRecorrencia = config;
+
+  //           switch (tipo) {
+  //             case TipoRecorrencia.diaria:
+  //               _diasSelecionados.clear();
+  //               _diasSelecionados.addAll(_diasSemana);
+  //               break;
+  //             case TipoRecorrencia.segAVinco:
+  //               _diasSelecionados.clear();
+  //               _diasSelecionados.addAll([
+  //                 'segunda',
+  //                 'terca',
+  //                 'quarta',
+  //                 'quinta',
+  //                 'sexta',
+  //               ]);
+  //               break;
+  //             case TipoRecorrencia.personalizado:
+  //               break;
+  //             default:
+  //               _diasSelecionados.clear();
+  //               break;
+  //           }
+  //         });
+  //       },
+  //     ),
+  //   );
+  // }
+
   void _abrirModalFrequencia() {
     showDialog(
       context: context,
@@ -161,8 +200,27 @@ class _CriarTarefaScreenState extends State<CriarTarefaScreen> {
                   'sexta',
                 ]);
                 break;
-              case TipoRecorrencia.personalizado:
+              case TipoRecorrencia.semanal:
+                // ✨ CORRIGIDO: Mapeia o dia da semana atual baseado na data selecionada
+                if (_dataInicial != null) {
+                  final diasMapeados = [
+                    'domingo',
+                    'segunda',
+                    'terca',
+                    'quarta',
+                    'quinta',
+                    'sexta',
+                    'sabado',
+                  ];
+                  _diasSelecionados = [diasMapeados[_dataInicial!.weekday % 7]];
+                }
                 break;
+              case TipoRecorrencia.personalizado:
+                if (config?.diasSemana != null) {
+                  _diasSelecionados = List<String>.from(config!.diasSemana!);
+                }
+                break;
+              case TipoRecorrencia.mensal:
               default:
                 _diasSelecionados.clear();
                 break;
@@ -173,8 +231,142 @@ class _CriarTarefaScreenState extends State<CriarTarefaScreen> {
     );
   }
 
+  // Future<void> _criarTarefa() async {
+  //   final erroTitulo = TarefaValidator.validateTitulo(_tituloController.text);
+  //   if (erroTitulo != null) {
+  //     _mostrarErro(erroTitulo);
+  //     return;
+  //   }
+
+  //   final erroDias = TarefaValidator.validateDias(
+  //     _diasSelecionados,
+  //     _tipoRecorrenciaSelecionado,
+  //   );
+  //   if (erroDias != null) {
+  //     _mostrarErro(erroDias);
+  //     return;
+  //   }
+
+  //   if (_dataInicial == null) {
+  //     _mostrarErro('Selecione a data inicial da tarefa.');
+  //     return;
+  //   }
+
+  //   final erroHorario = TarefaValidator.validateIntervaloHorario(
+  //     _horarioInicio,
+  //     _horarioFim,
+  //   );
+  //   if (erroHorario != null) {
+  //     _mostrarErro(erroHorario);
+  //     return;
+  //   }
+
+  //   if (_tipoRecorrenciaSelecionado == TipoRecorrencia.personalizado) {
+  //     if (_diasSelecionados.isEmpty) {
+  //       _mostrarErro(
+  //         'Selecione pelo menos um dia da semana para recorrência personalizada.',
+  //       );
+  //       return;
+  //     }
+  //   }
+
+  //   if (_tipoRecorrenciaSelecionado == TipoRecorrencia.personalizado) {
+  //     if (_diasSelecionados.isEmpty) {
+  //       _mostrarErro(
+  //         'Selecione pelo menos um dia da semana para recorrência personalizada.',
+  //       );
+  //       return;
+  //     }
+  //   }
+
+  //   if (_vincularMeta) {
+  //     if (_vincularMeta && _tagSelecionada == null) {
+  //       _mostrarErro('Selecione a categoria da meta.');
+  //       return;
+  //     }
+
+  //     final metaErro = TarefaValidator.validateMeta(
+  //       vincularMeta: _vincularMeta,
+  //       metaId: _metaSelecionada?.id,
+  //     );
+
+  //     if (metaErro != null) {
+  //       _mostrarErro(metaErro);
+  //       return;
+  //     }
+
+  //     try {
+  //       setState(() {
+  //         _salvando = true;
+  //       });
+
+  //       List<String> diasParaSalvar = List<String>.from(_diasSelecionados);
+  //       if (_tipoRecorrenciaSelecionado == TipoRecorrencia.mensal &&
+  //           _dataInicial != null) {
+  //         final mapeamentoDias = [
+  //           'domingo',
+  //           'segunda',
+  //           'terca',
+  //           'quarta',
+  //           'quinta',
+  //           'sexta',
+  //           'sabado',
+  //         ];
+  //         diasParaSalvar = [mapeamentoDias[_dataInicial!.weekday % 7]];
+  //       }
+
+  //       final usuarioLogado = FirebaseAuth.instance.currentUser;
+  //       final idUsuarioReal = usuarioLogado?.uid ?? '';
+
+  //       final tarefa = TarefaDto(
+  //         tituloTarefa: _tituloController.text.trim(),
+  //         diasRealizacao: diasParaSalvar,
+  //         horario: _horarioController.text.trim().isEmpty
+  //             ? null
+  //             : _horarioController.text.trim(),
+  //         horarioInicio: _horarioInicio,
+  //         horarioFim: _horarioFim,
+  //         dataInicial: _dataInicial,
+  //         metaId: _vincularMeta ? _metaSelecionada?.id : null,
+  //         tituloMeta: _vincularMeta ? _metaSelecionada?.tituloMeta : null,
+  //         tag: _vincularMeta ? _tagSelecionada : null,
+  //         status: 'pendente',
+  //         userId: idUsuarioReal,
+  //         dataCriacao: DateTime.now(),
+  //         tipoRecorrencia: _tipoRecorrenciaSelecionado,
+  //         configuracaoRecorrencia: _configuracaoRecorrencia,
+  //       );
+
+  //       await _tarefasRepository.criarTarefa(tarefa);
+
+  //       if (!mounted) return;
+  //       Navigator.pop(context);
+  //     } catch (e) {
+  //       _mostrarErro(e.toString().replaceFirst('Exception: ', ''));
+  //     } finally {
+  //       if (mounted) {
+  //         setState(() {
+  //           _salvando = false;
+  //         });
+  //       }
+  //     }
+  //   }
+  // }
+
   Future<void> _criarTarefa() async {
-    if (!(_formKey.currentState?.validate() ?? false)) {
+    // 1. Validações de formato básicas
+    final erroTitulo = TarefaValidator.validateTitulo(_tituloController.text);
+    if (erroTitulo != null) {
+      _mostrarErro(erroTitulo);
+      return;
+    }
+
+    final erroDias = TarefaValidator.validateDias(
+      _diasSelecionados,
+      _tipoRecorrenciaSelecionado,
+    );
+    if (erroDias != null) {
+      _mostrarErro(erroDias);
       return;
     }
 
@@ -201,40 +393,77 @@ class _CriarTarefaScreenState extends State<CriarTarefaScreen> {
       }
     }
 
-    if (_vincularMeta && _tagSelecionada == null) {
-      _mostrarErro('Selecione a categoria da meta.');
+    // ✨ TRAVA OBRIGATÓRIA: O usuário DEVE ativar o Switch de metas
+    if (!_vincularMeta) {
+      _mostrarErro(
+        'Toda tarefa precisa estar vinculada a uma meta. Ative o campo abaixo.',
+      );
       return;
     }
 
+    // ✨ TRAVA OBRIGATÓRIA: Deve escolher se é Negócio ou Faculdade
+    if (_tagSelecionada == null) {
+      _mostrarErro('Selecione a categoria da meta (Negócio ou Faculdade).');
+      return;
+    }
+
+    // ✨ TRAVA OBRIGATÓRIA: Deve selecionar uma meta do Dropdown
+    if (_metaSelecionada == null) {
+      _mostrarErro('Por favor, selecione uma meta válida no campo.');
+      return;
+    }
+
+    // Validação extra do validador do projeto se houver
     final metaErro = TarefaValidator.validateMeta(
       vincularMeta: _vincularMeta,
       metaId: _metaSelecionada?.id,
     );
-
     if (metaErro != null) {
       _mostrarErro(metaErro);
       return;
     }
 
+    // 2. Fluxo de salvamento no Firebase
     try {
       setState(() {
         _salvando = true;
       });
 
+      List<String> diasParaSalvar = List<String>.from(_diasSelecionados);
+      if (_tipoRecorrenciaSelecionado == TipoRecorrencia.mensal &&
+          _dataInicial != null) {
+        final mapeamentoDias = [
+          'domingo',
+          'segunda',
+          'terca',
+          'quarta',
+          'quinta',
+          'sexta',
+          'sabado',
+        ];
+        diasParaSalvar = [mapeamentoDias[_dataInicial!.weekday % 7]];
+      }
+
+      final usuarioLogado = FirebaseAuth.instance.currentUser;
+      final idUsuarioReal = usuarioLogado?.uid ?? '';
+
       final tarefa = TarefaDto(
         tituloTarefa: _tituloController.text.trim(),
-        diasRealizacao: _diasSelecionados,
+        diasRealizacao: diasParaSalvar,
         horario: _horarioController.text.trim().isEmpty
             ? null
             : _horarioController.text.trim(),
         horarioInicio: _horarioInicio,
         horarioFim: _horarioFim,
         dataInicial: _dataInicial,
-        metaId: _vincularMeta ? _metaSelecionada?.id : null,
-        tituloMeta: _vincularMeta ? _metaSelecionada?.tituloMeta : null,
-        tag: _vincularMeta ? _tagSelecionada : null,
+
+        // Dados validados e obrigatórios salvos com segurança
+        metaId: _metaSelecionada!.id,
+        tituloMeta: _metaSelecionada!.tituloMeta,
+        tag: _tagSelecionada!,
+
         status: 'pendente',
-        userId: '',
+        userId: idUsuarioReal,
         dataCriacao: DateTime.now(),
         tipoRecorrencia: _tipoRecorrenciaSelecionado,
         configuracaoRecorrencia: _configuracaoRecorrencia,
