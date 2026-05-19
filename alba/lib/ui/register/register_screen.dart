@@ -165,6 +165,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           onChanged: (value) {
                             final phone = _countryCode.substring(1) + value;
                             dto.setPhone(phone.replaceAll(' ', ''));
+                            print(dto.phone);
                           },
                           inputFormatters: [
                             MaskTextInputFormatter(
