@@ -98,15 +98,78 @@ class TarefaDto {
     configuracaoRecorrencia = value;
   }
 
+  static String _tratarStringObrigatoria(dynamic valor) {
+    if (valor == null) return '';
+
+    if (valor is String) {
+      return valor.trim();
+    }
+
+    try {
+      return valor.id.toString().trim();
+    } catch (_) {
+      return valor.toString().trim();
+    }
+  }
+
+  static String? _tratarStringOpcional(dynamic valor) {
+    if (valor == null) return null;
+
+    if (valor is String) {
+      final texto = valor.trim();
+      return texto.isEmpty ? null : texto;
+    }
+
+    try {
+      final texto = valor.id.toString().trim();
+      return texto.isEmpty ? null : texto;
+    } catch (_) {
+      final texto = valor.toString().trim();
+      return texto.isEmpty ? null : texto;
+    }
+  }
+
+  static DateTime? _converterTimestamp(dynamic campo) {
+    if (campo == null) return null;
+
+    if (campo is Timestamp) {
+      return campo.toDate();
+    }
+
+    return null;
+  }
+
+  static List<String> _converterListaString(dynamic valor) {
+    if (valor == null) return [];
+
+    if (valor is! List) return [];
+
+    return valor
+        .map((item) => item.toString().trim().toLowerCase())
+        .where((item) => item.isNotEmpty)
+        .toList();
+  }
+
   Map<String, dynamic> toMap() {
+    // Campo novo é a fonte principal.
+    final inicio = _tratarStringOpcional(horarioInicio) ??
+        _tratarStringOpcional(horario);
+
+    final fim = _tratarStringOpcional(horarioFim);
+
     return {
       'id': id,
       'userId': userId,
       'tituloTarefa': tituloTarefa,
       'diasRealizacao': diasRealizacao,
-      'horario': horario,
-      'horarioInicio': horarioInicio,
-      'horarioFim': horarioFim,
+
+      // Campo antigo mantido por compatibilidade com telas antigas.
+      'horario': inicio,
+
+      // Campos novos corretos.
+      'horarioInicio': inicio,
+      'horarioFim': fim,
+
       'dataInicial': dataInicial != null
           ? Timestamp.fromDate(dataInicial!)
           : null,
@@ -124,46 +187,41 @@ class TarefaDto {
   }
 
   factory TarefaDto.fromMap(Map<String, dynamic> data, String id) {
-    String _tratarString(dynamic valor) {
-      if (valor == null) return '';
-      if (valor is String) return valor;
-      try {
-        return valor.id;
-      } catch (e) {
-        return valor.toString();
-      }
-    }
+    final horarioLegado = _tratarStringOpcional(data['horario']);
 
-    // Função de segurança adicionada aqui para evitar o crash
-    DateTime? _converterTimestamp(dynamic campo) {
-      if (campo == null) return null;
-      if (campo is Timestamp) return campo.toDate();
-      return null;
-    }
+    final horarioInicio =
+        _tratarStringOpcional(data['horarioInicio']) ?? horarioLegado;
+
+    final horarioFim = _tratarStringOpcional(data['horarioFim']);
+
+    final configRaw = data['configuracaoRecorrencia'];
+
+    final Map<String, dynamic>? configMap = configRaw is Map
+        ? Map<String, dynamic>.from(configRaw)
+        : null;
 
     return TarefaDto(
-      id: data['id'] ?? id,
-      tituloTarefa: data['tituloTarefa'] ?? '',
-      diasRealizacao: List<String>.from(data['diasRealizacao'] ?? []),
-      horario: data['horario'],
-      horarioInicio: data['horarioInicio'],
-      horarioFim: data['horarioFim'],
-      dataInicial: _converterTimestamp(data['dataInicial']), // Alterado
-      metaId: _tratarString(data['metaId']),
-      tituloMeta: data['tituloMeta'],
-      tag: data['tag'],
-      status: data['status'] ?? 'pendente',
-      userId: _tratarString(data['userId']),
-      dataCriacao:
-          _converterTimestamp(data['dataCriacao']) ??
-          DateTime.now(), // Alterado
-      dataConclusao: _converterTimestamp(data['dataConclusao']), // Alterado
+      id: _tratarStringOpcional(data['id']) ?? id,
+      tituloTarefa: _tratarStringOpcional(data['tituloTarefa']) ?? '',
+      diasRealizacao: _converterListaString(data['diasRealizacao']),
+
+      // Mantém compatibilidade com tarefas antigas.
+      horario: horarioInicio,
+      horarioInicio: horarioInicio,
+      horarioFim: horarioFim,
+
+      dataInicial: _converterTimestamp(data['dataInicial']),
+      metaId: _tratarStringOpcional(data['metaId']),
+      tituloMeta: _tratarStringOpcional(data['tituloMeta']),
+      tag: _tratarStringOpcional(data['tag']),
+      status: _tratarStringOpcional(data['status']) ?? 'pendente',
+      userId: _tratarStringObrigatoria(data['userId']),
+      dataCriacao: _converterTimestamp(data['dataCriacao']) ?? DateTime.now(),
+      dataConclusao: _converterTimestamp(data['dataConclusao']),
       tipoRecorrencia: TipoRecorrencia.fromString(
-        data['tipoRecorrencia'] ?? '',
+        data['tipoRecorrencia']?.toString(),
       ),
-      configuracaoRecorrencia: ConfiguracaoRecorrencia.fromMap(
-        data['configuracaoRecorrencia'] as Map<String, dynamic>?,
-      ),
+      configuracaoRecorrencia: ConfiguracaoRecorrencia.fromMap(configMap),
     );
   }
 }

@@ -12,15 +12,20 @@ class TarefaValidator {
   ];
 
   static String? validateTitulo(String value) {
-    if (value.isEmpty || value.trim().isEmpty) {
+    final titulo = value.trim();
+
+    if (titulo.isEmpty) {
       return 'Preencha todos os campos obrigatórios.';
     }
-    if (value.trim().length < 3) {
-      return 'Deve conter pelo menos 3 caracteres';
+
+    if (titulo.length < 3) {
+      return 'Deve conter pelo menos 3 caracteres.';
     }
-    if (value.trim().length > 100) {
-      return 'Deve conter no máximo 100 caracteres';
+
+    if (titulo.length > 100) {
+      return 'Deve conter no máximo 100 caracteres.';
     }
+
     return null;
   }
 
@@ -28,19 +33,27 @@ class TarefaValidator {
     List<String>? dias,
     TipoRecorrencia tipoRecorrencia,
   ) {
-    // Se a recorrência for automática, não obriga o usuário a selecionar dias na tela
     if (tipoRecorrencia != TipoRecorrencia.personalizado) {
-      return null; // Libera o formulário direto para Mensal, Semanal, Diária, etc.
+      return null;
     }
 
-    // Se chegou até aqui é porque é Personalizado, então a lista não pode ser vazia
     if (dias == null || dias.isEmpty) {
       return 'Selecione pelo menos um dia da semana para a recorrência.';
     }
 
-    final diasInvalidos = dias.where(
-      (dia) => !diasPermitidos.contains(dia.toLowerCase().trim()),
+    final diasNormalizados = dias
+        .map((dia) => dia.trim().toLowerCase())
+        .where((dia) => dia.isNotEmpty)
+        .toList();
+
+    if (diasNormalizados.isEmpty) {
+      return 'Selecione pelo menos um dia da semana para a recorrência.';
+    }
+
+    final diasInvalidos = diasNormalizados.where(
+      (dia) => !diasPermitidos.contains(dia),
     );
+
     if (diasInvalidos.isNotEmpty) {
       return 'Selecione apenas dias válidos da semana.';
     }
@@ -49,22 +62,18 @@ class TarefaValidator {
   }
 
   static String? validateHorario(String? value) {
-    if (value == null || value.isEmpty) {
-      return null; // opcional
+    final horario = value?.trim();
+
+    if (horario == null || horario.isEmpty) {
+      return null;
     }
 
     final regex = RegExp(r'^([01]\d|2[0-3]):([0-5]\d)$');
-    if (!regex.hasMatch(value)) {
+
+    if (!regex.hasMatch(horario)) {
       return 'Informe um horário válido no formato HH:MM.';
     }
 
-    return null;
-  }
-
-  static String? validateMeta({required bool vincularMeta, String? metaId}) {
-    if (vincularMeta && (metaId == null || metaId.isEmpty)) {
-      return 'Preencha todos os campos obrigatórios.';
-    }
     return null;
   }
 
@@ -73,46 +82,78 @@ class TarefaValidator {
   }
 
   static String? validateHorarioInicio(String? value) {
-    if (value == null || value.isEmpty) {
-      return null;
-    }
-
     return validateHorario(value);
   }
 
   static String? validateHorarioFim(String? value) {
-    if (value == null || value.isEmpty) {
-      return null;
-    }
-
     return validateHorario(value);
   }
 
   static String? validateIntervaloHorario(String? inicio, String? fim) {
-    if ((inicio == null || inicio.isEmpty) && (fim == null || fim.isEmpty)) {
+    final horarioInicio = inicio?.trim();
+    final horarioFim = fim?.trim();
+
+    final inicioVazio = horarioInicio == null || horarioInicio.isEmpty;
+    final fimVazio = horarioFim == null || horarioFim.isEmpty;
+
+    // Horário é opcional. Se os dois estiverem vazios, está tudo bem.
+    if (inicioVazio && fimVazio) {
       return null;
     }
 
-    if ((inicio == null || inicio.isEmpty) || (fim == null || fim.isEmpty)) {
+    // Mas se preencher um, precisa preencher os dois.
+    if (inicioVazio || fimVazio) {
       return 'Informe horário inicial e final válidos.';
     }
 
-    if (validateHorario(inicio) != null || validateHorario(fim) != null) {
+    final erroInicio = validateHorario(horarioInicio);
+    final erroFim = validateHorario(horarioFim);
+
+    if (erroInicio != null || erroFim != null) {
       return 'Informe horários válidos no formato HH:MM.';
     }
 
-    final horaInicio = int.parse(inicio.split(':')[0]);
-    final minutoInicio = int.parse(inicio.split(':')[1]);
-    final horaFim = int.parse(fim.split(':')[0]);
-    final minutoFim = int.parse(fim.split(':')[1]);
+    final minutosInicio = _converterHorarioParaMinutos(horarioInicio);
+    final minutosFim = _converterHorarioParaMinutos(horarioFim);
 
-    final minutosInicio = horaInicio * 60 + minutoInicio;
-    final minutosFim = horaFim * 60 + minutoFim;
+    if (minutosInicio == null || minutosFim == null) {
+      return 'Informe horários válidos no formato HH:MM.';
+    }
 
     if (minutosFim <= minutosInicio) {
       return 'O horário final deve ser maior que o inicial.';
     }
 
     return null;
+  }
+
+  static String? validateMeta({
+    required bool vincularMeta,
+    String? metaId,
+  }) {
+    final id = metaId?.trim();
+
+    if (vincularMeta && (id == null || id.isEmpty)) {
+      return 'Preencha todos os campos obrigatórios.';
+    }
+
+    return null;
+  }
+
+  static int? _converterHorarioParaMinutos(String horario) {
+    final partes = horario.split(':');
+
+    if (partes.length != 2) {
+      return null;
+    }
+
+    final hora = int.tryParse(partes[0]);
+    final minuto = int.tryParse(partes[1]);
+
+    if (hora == null || minuto == null) {
+      return null;
+    }
+
+    return hora * 60 + minuto;
   }
 }

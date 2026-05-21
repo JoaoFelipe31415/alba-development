@@ -1,9 +1,9 @@
 import 'package:alba/data/repositories/tarefas_repository.dart';
 import 'package:alba/domain/dto/tarefa_dto.dart';
 import 'package:alba/domain/entities/recorrencia.dart';
+import 'package:alba/ui/design_system/theme/app_colors.dart';
 import 'package:alba/ui/tarefas/criar_tarefa_screen.dart';
 import 'package:alba/ui/tarefas/editar_tarefa_screen.dart';
-import 'package:alba/ui/design_system/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 
 class GerenciamentoTarefasScreen extends StatefulWidget {
@@ -31,20 +31,23 @@ class _GerenciamentoTarefasScreenState
     'Dezembro',
   ];
 
-  String _mesSelecionado = 'Abril';
-  String _mesDoCalendario = 'Abril';
-  int _offsetDias = 0;
-
   final TarefasRepository _tarefasRepository = TarefasRepository();
   final TextEditingController _buscaController = TextEditingController();
 
+  String _mesSelecionado = 'Abril';
+  String _mesDoCalendario = 'Abril';
   String _busca = '';
+
+  int _offsetDias = 0;
+
   DateTime _dataSelecionada = DateTime.now();
+
   final Map<String, bool> _statusLocalConcluido = {};
 
   @override
   void initState() {
     super.initState();
+
     _mesDoCalendario = _meses[_dataSelecionada.month - 1];
     _mesSelecionado = _meses[_dataSelecionada.month - 1];
   }
@@ -55,11 +58,218 @@ class _GerenciamentoTarefasScreenState
     super.dispose();
   }
 
+  DateTime _apenasData(DateTime data) {
+    final local = data.toLocal();
+
+    return DateTime(
+      local.year,
+      local.month,
+      local.day,
+    );
+  }
+
+  bool _mesmoDia(DateTime a, DateTime b) {
+    final dataA = _apenasData(a);
+    final dataB = _apenasData(b);
+
+    return dataA.year == dataB.year &&
+        dataA.month == dataB.month &&
+        dataA.day == dataB.day;
+  }
+
+  String _nomeDiaInterno(DateTime data) {
+    switch (data.weekday) {
+      case DateTime.monday:
+        return 'segunda';
+      case DateTime.tuesday:
+        return 'terca';
+      case DateTime.wednesday:
+        return 'quarta';
+      case DateTime.thursday:
+        return 'quinta';
+      case DateTime.friday:
+        return 'sexta';
+      case DateTime.saturday:
+        return 'sabado';
+      case DateTime.sunday:
+        return 'domingo';
+      default:
+        return '';
+    }
+  }
+
+  List<String> _diasDaTarefa(TarefaDto tarefa) {
+    final diasConfig = tarefa.configuracaoRecorrencia?.diasSemana;
+
+    if (tarefa.tipoRecorrencia == TipoRecorrencia.personalizado &&
+        diasConfig != null &&
+        diasConfig.isNotEmpty) {
+      return diasConfig
+          .map((dia) => dia.toLowerCase().trim())
+          .where((dia) => dia.isNotEmpty)
+          .toList();
+    }
+
+    return tarefa.diasRealizacao
+        .map((dia) => dia.toLowerCase().trim())
+        .where((dia) => dia.isNotEmpty)
+        .toList();
+  }
+
+  bool _tarefaAconteceNoDia(TarefaDto tarefa, DateTime data) {
+    final dataSelecionadaLimpa = _apenasData(data);
+    final dataInicio = _apenasData(tarefa.dataInicial ?? tarefa.dataCriacao);
+
+    if (dataSelecionadaLimpa.isBefore(dataInicio)) {
+      return false;
+    }
+
+    final diaSemanaSelecionado = _nomeDiaInterno(dataSelecionadaLimpa);
+    final dias = _diasDaTarefa(tarefa);
+
+    switch (tarefa.tipoRecorrencia) {
+      case TipoRecorrencia.naoRepete:
+        return _mesmoDia(dataInicio, dataSelecionadaLimpa);
+
+      case TipoRecorrencia.diaria:
+        return true;
+
+      case TipoRecorrencia.segAVinco:
+        return dataSelecionadaLimpa.weekday >= DateTime.monday &&
+            dataSelecionadaLimpa.weekday <= DateTime.friday;
+
+      case TipoRecorrencia.semanal:
+        if (dias.isNotEmpty) {
+          return dias.contains(diaSemanaSelecionado);
+        }
+
+        return dataSelecionadaLimpa.weekday == dataInicio.weekday;
+
+      case TipoRecorrencia.mensal:
+        return dataSelecionadaLimpa.day == dataInicio.day;
+
+      case TipoRecorrencia.anual:
+        return dataSelecionadaLimpa.day == dataInicio.day &&
+            dataSelecionadaLimpa.month == dataInicio.month;
+
+      case TipoRecorrencia.personalizado:
+        return dias.contains(diaSemanaSelecionado);
+    }
+  }
+
+  bool _tarefaAconteceNoMes(TarefaDto tarefa, int mes, int ano) {
+    final primeiroDiaMes = DateTime(ano, mes, 1);
+    final ultimoDiaMes = DateTime(ano, mes + 1, 0);
+
+    final dataInicio = _apenasData(tarefa.dataInicial ?? tarefa.dataCriacao);
+
+    if (ultimoDiaMes.isBefore(dataInicio)) {
+      return false;
+    }
+
+    if (tarefa.tipoRecorrencia == TipoRecorrencia.naoRepete) {
+      return dataInicio.month == mes && dataInicio.year == ano;
+    }
+
+    var dataAtual = primeiroDiaMes;
+
+    while (!dataAtual.isAfter(ultimoDiaMes)) {
+      if (_tarefaAconteceNoDia(tarefa, dataAtual)) {
+        return true;
+      }
+
+      dataAtual = dataAtual.add(const Duration(days: 1));
+    }
+
+    return false;
+  }
+
+  List<TarefaDto> _filtrarTarefasDoDiaSelecionado(List<TarefaDto> tarefas) {
+    return tarefas.where((tarefa) {
+      final naoConcluida = !_estaConcluidaLocal(tarefa);
+
+      if (!naoConcluida) {
+        return false;
+      }
+
+      return _tarefaAconteceNoDia(tarefa, _dataSelecionada);
+    }).toList();
+  }
+
+  List<TarefaDto> _filtrarTarefasDoMesSelecionado(List<TarefaDto> tarefas) {
+    final mes = _meses.indexOf(_mesSelecionado) + 1;
+    final ano = DateTime.now().year;
+
+    final filtradas = tarefas.where((tarefa) {
+      return _tarefaAconteceNoMes(tarefa, mes, ano);
+    }).toList();
+
+    filtradas.sort((a, b) {
+      final dataA = a.dataInicial ?? a.dataCriacao;
+      final dataB = b.dataInicial ?? b.dataCriacao;
+
+      return dataA.compareTo(dataB);
+    });
+
+    return filtradas;
+  }
+
+  bool _estaConcluidaLocal(TarefaDto tarefa) {
+    if (tarefa.id == null) {
+      return tarefa.status.toLowerCase() == 'concluida';
+    }
+
+    return _statusLocalConcluido[tarefa.id!] ??
+        (tarefa.status.toLowerCase() == 'concluida');
+  }
+
+  void _toggleStatusLocal(TarefaDto tarefa) {
+    if (tarefa.id == null) return;
+
+    setState(() {
+      final statusAtual = _estaConcluidaLocal(tarefa);
+      _statusLocalConcluido[tarefa.id!] = !statusAtual;
+    });
+  }
+
+  Future<void> _toggleStatusTarefa(TarefaDto tarefa) async {
+    if (tarefa.id == null) return;
+
+    final estaConcluida = _estaConcluidaLocal(tarefa);
+    final novoStatus = estaConcluida ? 'pendente' : 'concluida';
+
+    _toggleStatusLocal(tarefa);
+
+    try {
+      await _tarefasRepository.atualizarStatus(tarefa.id!, novoStatus);
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Tarefa marcada como $novoStatus!'),
+          duration: const Duration(seconds: 1),
+        ),
+      );
+    } catch (e) {
+      _toggleStatusLocal(tarefa);
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Erro ao atualizar no banco de dados.'),
+        ),
+      );
+    }
+  }
+
   Future<void> _confirmarExclusao(TarefaDto tarefa) async {
     final confirmar = await showDialog<bool>(
       context: context,
       builder: (context) {
         final colors = Theme.of(context).extension<AppColors>()!;
+
         return AlertDialog(
           title: const Text('Tem certeza?'),
           content: const Text('Esta ação não pode ser desfeita.'),
@@ -87,20 +297,28 @@ class _GerenciamentoTarefasScreenState
       },
     );
 
-    if (confirmar == true && tarefa.id != null) {
-      try {
-        await _tarefasRepository.excluirTarefa(tarefa.id!);
-        if (!mounted) return;
-        setState(() {});
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Tarefa excluída com sucesso.')),
-        );
-      } catch (e) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
-        );
-      }
+    if (confirmar != true || tarefa.id == null) {
+      return;
+    }
+
+    try {
+      await _tarefasRepository.excluirTarefa(tarefa.id!);
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Tarefa excluída com sucesso.')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            e.toString().replaceFirst('Exception: ', ''),
+          ),
+        ),
+      );
     }
   }
 
@@ -109,7 +327,9 @@ class _GerenciamentoTarefasScreenState
       context: context,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(20),
+        ),
       ),
       builder: (context) {
         final appColors = Theme.of(context).extension<AppColors>()!;
@@ -119,7 +339,10 @@ class _GerenciamentoTarefasScreenState
             children: [
               Center(
                 child: Container(
-                  margin: const EdgeInsets.only(top: 10, bottom: 5),
+                  margin: const EdgeInsets.only(
+                    top: 10,
+                    bottom: 5,
+                  ),
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
@@ -129,13 +352,17 @@ class _GerenciamentoTarefasScreenState
                 ),
               ),
               ListTile(
-                leading: Icon(Icons.edit, color: appColors.azulAlba),
+                leading: Icon(
+                  Icons.edit,
+                  color: appColors.azulAlba,
+                ),
                 title: const Text(
                   'Editar',
                   style: TextStyle(fontWeight: FontWeight.w500),
                 ),
                 onTap: () {
                   Navigator.pop(context);
+
                   Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -145,7 +372,10 @@ class _GerenciamentoTarefasScreenState
                 },
               ),
               ListTile(
-                leading: Icon(Icons.delete, color: appColors.primaryColor),
+                leading: Icon(
+                  Icons.delete,
+                  color: appColors.primaryColor,
+                ),
                 title: const Text(
                   'Excluir',
                   style: TextStyle(fontWeight: FontWeight.w500),
@@ -163,167 +393,106 @@ class _GerenciamentoTarefasScreenState
     );
   }
 
-  bool _estaConcluidaLocal(TarefaDto tarefa) {
-    if (tarefa.id == null) return tarefa.status.toLowerCase() == 'concluida';
-
-    return _statusLocalConcluido[tarefa.id!] ??
-        (tarefa.status.toLowerCase() == 'concluida');
-  }
-
-  void _toggleStatusLocal(TarefaDto tarefa) {
-    if (tarefa.id == null) return;
-
-    setState(() {
-      final statusAtual = _estaConcluidaLocal(tarefa);
-      _statusLocalConcluido[tarefa.id!] = !statusAtual;
-    });
-  }
-
-  Future<void> _toggleStatusTarefa(TarefaDto tarefa) async {
-    if (tarefa.id == null) return;
-
-    final estaConcluida = _estaConcluidaLocal(tarefa);
-    final novoStatus = estaConcluida ? 'pendente' : 'concluida';
-
-    _toggleStatusLocal(tarefa);
-
-    try {
-      await _tarefasRepository.atualizarStatus(tarefa.id!, novoStatus);
-
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Tarefa marcada como $novoStatus!'),
-          duration: const Duration(seconds: 1),
-        ),
-      );
-    } catch (e) {
-      _toggleStatusLocal(tarefa);
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Erro ao atualizar no banco de dados.')),
-      );
-    }
-  }
-
-  String _nomeDiaInterno(DateTime data) {
-    switch (data.weekday) {
-      case DateTime.monday:
-        return 'segunda';
-      case DateTime.tuesday:
-        return 'terca';
-      case DateTime.wednesday:
-        return 'quarta';
-      case DateTime.thursday:
-        return 'quinta';
-      case DateTime.friday:
-        return 'sexta';
-      case DateTime.saturday:
-        return 'sabado';
-      case DateTime.sunday:
-        return 'domingo';
-      default:
-        return '';
-    }
-  }
-
-  List<TarefaDto> _filtrarTarefasDoDiaSelecionado(List<TarefaDto> tarefas) {
-    final diaSemanaSelecionado = _nomeDiaInterno(_dataSelecionada);
-
-    final dataSelecionadaLimpa = DateTime(
-      _dataSelecionada.year,
-      _dataSelecionada.month,
-      _dataSelecionada.day,
-    );
-
-    final titulosFilhosNoDia = tarefas
-        .where((t) {
-          final tipo = t.tipoRecorrencia.toString().toLowerCase();
-          if (tipo.contains('não repete') || tipo.contains('naorepete')) {
-            final dt = t.dataInicial ?? t.dataCriacao;
-            final dtCorrigida = dt.toLocal().add(const Duration(hours: 4));
-            return dtCorrigida.year == dataSelecionadaLimpa.year &&
-                dtCorrigida.month == dataSelecionadaLimpa.month &&
-                dtCorrigida.day == dataSelecionadaLimpa.day;
-          }
-          return false;
-        })
-        .map((t) => t.tituloTarefa.toLowerCase().trim())
-        .toSet();
-
-    return tarefas.where((tarefa) {
-      final naoConcluida = !_estaConcluidaLocal(tarefa);
-      if (!naoConcluida) return false;
-
-      final tipo = tarefa.tipoRecorrencia.toString().toLowerCase().replaceAll(
-        'tiporecorrencia.',
-        '',
-      );
-
-      final dataDeInicioRaw = tarefa.dataInicial ?? tarefa.dataCriacao;
-      final dataDeInicio = dataDeInicioRaw.toLocal().add(
-        const Duration(hours: 4),
-      );
-
-      final dataInicioLimpa = DateTime(
-        dataDeInicio.year,
-        dataDeInicio.month,
-        dataDeInicio.day,
-      );
-
-      if (dataSelecionadaLimpa.isBefore(dataInicioLimpa)) {
-        return false;
-      }
-
-      if (tipo.contains('não repete') || tipo.contains('naorepete')) {
-        return dataInicioLimpa.year == dataSelecionadaLimpa.year &&
-            dataInicioLimpa.month == dataSelecionadaLimpa.month &&
-            dataInicioLimpa.day == dataSelecionadaLimpa.day;
-      }
-
-      if (tipo.contains('mensal')) {
-        return dataInicioLimpa.day == dataSelecionadaLimpa.day;
-      }
-
-      if (tipo.contains('semanal')) {
-        if (titulosFilhosNoDia.contains(
-          tarefa.tituloTarefa.toLowerCase().trim(),
-        )) {
-          return false;
-        }
-
-        return tarefa.diasRealizacao
-            .map((d) => d.toLowerCase().trim())
-            .contains(diaSemanaSelecionado.trim());
-      }
-
-      return tarefa.diasRealizacao
-          .map((d) => d.toLowerCase().trim())
-          .contains(diaSemanaSelecionado.trim());
-    }).toList();
-  }
-
-  bool _mesmoDia(DateTime a, DateTime b) {
-    final aCorrigido = a.toLocal().add(const Duration(hours: 4));
-    final bCorrigido = b.toLocal();
-    return aCorrigido.year == bCorrigido.year &&
-        aCorrigido.month == bCorrigido.month &&
-        aCorrigido.day == bCorrigido.day;
-  }
-
   String _formatarTag(String? tag) {
     if (tag == null || tag.isEmpty) return '';
+
     final normalized = tag.toLowerCase();
+
     if (normalized == 'negocio') return 'Negócio';
     if (normalized == 'faculdade') return 'Faculdade';
+
     return tag[0].toUpperCase() + tag.substring(1);
   }
 
   Color _corTag(String? tag, AppColors colors) {
-    if (tag == null || tag.isEmpty) return colors.greyThree;
+    if (tag == null || tag.isEmpty) {
+      return colors.greyThree;
+    }
+
     return tag.toLowerCase() == 'negocio'
         ? colors.neonGreen
         : colors.primaryColor;
+  }
+
+  String _formatarHorario(TarefaDto tarefa) {
+    final inicio = tarefa.horarioInicio ?? tarefa.horario;
+    final fim = tarefa.horarioFim;
+
+    if (inicio == null || inicio.trim().isEmpty) {
+      return '';
+    }
+
+    if (fim == null || fim.trim().isEmpty) {
+      return inicio;
+    }
+
+    return '$inicio - $fim';
+  }
+
+  String _formatarRecorrencia(TarefaDto tarefa) {
+    switch (tarefa.tipoRecorrencia) {
+      case TipoRecorrencia.naoRepete:
+        return 'Não repete';
+
+      case TipoRecorrencia.diaria:
+        return 'Diária';
+
+      case TipoRecorrencia.segAVinco:
+        return 'Seg à Sex';
+
+      case TipoRecorrencia.semanal:
+        final dias = _diasDaTarefa(tarefa);
+
+        if (dias.isNotEmpty) {
+          return 'Semanal: ${_formatarDiasTexto(dias)}';
+        }
+
+        return 'Semanal';
+
+      case TipoRecorrencia.mensal:
+        return 'Mensal';
+
+      case TipoRecorrencia.anual:
+        return 'Anual';
+
+      case TipoRecorrencia.personalizado:
+        final dias = _diasDaTarefa(tarefa);
+
+        if (dias.isEmpty) {
+          return 'Personalizado';
+        }
+
+        return _formatarDiasTexto(dias);
+    }
+  }
+
+  String _formatarDiasTexto(List<String> dias) {
+    final mapa = {
+      'segunda': 'Seg',
+      'terca': 'Ter',
+      'quarta': 'Qua',
+      'quinta': 'Qui',
+      'sexta': 'Sex',
+      'sabado': 'Sáb',
+      'domingo': 'Dom',
+    };
+
+    return dias.map((dia) => mapa[dia] ?? dia).join(', ');
+  }
+
+  bool _shouldShowDias(TipoRecorrencia tipoRecorrencia) {
+    switch (tipoRecorrencia) {
+      case TipoRecorrencia.diaria:
+      case TipoRecorrencia.segAVinco:
+      case TipoRecorrencia.semanal:
+      case TipoRecorrencia.personalizado:
+        return true;
+
+      case TipoRecorrencia.naoRepete:
+      case TipoRecorrencia.mensal:
+      case TipoRecorrencia.anual:
+        return false;
+    }
   }
 
   Widget _buildDiaBolinha(
@@ -332,9 +501,7 @@ class _GerenciamentoTarefasScreenState
     TarefaDto tarefa,
     AppColors colors,
   ) {
-    final selecionado = tarefa.diasRealizacao
-        .map((d) => d.toLowerCase())
-        .contains(dia.toLowerCase());
+    final selecionado = _diasDaTarefa(tarefa).contains(dia.toLowerCase());
 
     return Container(
       width: 34,
@@ -343,7 +510,10 @@ class _GerenciamentoTarefasScreenState
       decoration: BoxDecoration(
         color: selecionado ? colors.neonGreen : colors.whiteColor,
         shape: BoxShape.circle,
-        border: Border.all(color: colors.neonGreen, width: 2),
+        border: Border.all(
+          color: colors.neonGreen,
+          width: 2,
+        ),
       ),
       child: Text(
         letra,
@@ -355,24 +525,10 @@ class _GerenciamentoTarefasScreenState
     );
   }
 
-  // 🔧 BUG FIX: Determina se deve mostrar seletores de dias baseado no tipo
-  bool _shouldShowDias(TipoRecorrencia tipoRecorrencia) {
-    // Mostrar dias apenas para tipos que os usam
-    switch (tipoRecorrencia) {
-      case TipoRecorrencia.diaria:
-      case TipoRecorrencia.segAVinco:
-      case TipoRecorrencia.personalizado:
-        return true;
-      case TipoRecorrencia.naoRepete:
-      case TipoRecorrencia.semanal:
-      case TipoRecorrencia.mensal:
-      case TipoRecorrencia.anual:
-        return false;
-    }
-  }
-
   Widget _buildHojeCard(TarefaDto tarefa, AppColors colors) {
     final concluida = _estaConcluidaLocal(tarefa);
+    final horario = _formatarHorario(tarefa);
+    final recorrencia = _formatarRecorrencia(tarefa);
 
     return Container(
       decoration: BoxDecoration(
@@ -399,10 +555,17 @@ class _GerenciamentoTarefasScreenState
                   height: 28,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    border: Border.all(color: colors.neonGreen, width: 2),
+                    border: Border.all(
+                      color: colors.neonGreen,
+                      width: 2,
+                    ),
                   ),
                   child: concluida
-                      ? Icon(Icons.check, color: colors.neonGreen, size: 18)
+                      ? Icon(
+                          Icons.check,
+                          color: colors.neonGreen,
+                          size: 18,
+                        )
                       : null,
                 ),
               ),
@@ -422,7 +585,10 @@ class _GerenciamentoTarefasScreenState
                 ),
               ),
               IconButton(
-                icon: Icon(Icons.edit, color: colors.neonGreen),
+                icon: Icon(
+                  Icons.edit,
+                  color: colors.neonGreen,
+                ),
                 onPressed: () async {
                   await Navigator.push(
                     context,
@@ -433,33 +599,69 @@ class _GerenciamentoTarefasScreenState
                 },
               ),
               IconButton(
-                icon: Icon(Icons.delete, color: colors.neonGreen),
+                icon: Icon(
+                  Icons.delete,
+                  color: colors.neonGreen,
+                ),
                 onPressed: () => _confirmarExclusao(tarefa),
               ),
             ],
           ),
           const SizedBox(height: 10),
-          if (tarefa.tag != null && tarefa.tag!.isNotEmpty)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              decoration: BoxDecoration(
-                color: _corTag(tarefa.tag, colors),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                _formatarTag(tarefa.tag),
-                style: TextStyle(
-                  color: tarefa.tag!.toLowerCase() == 'negocio'
-                      ? colors.backgroundColor
-                      : colors.whiteColor,
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              if (tarefa.tag != null && tarefa.tag!.isNotEmpty)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: _corTag(tarefa.tag, colors),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    _formatarTag(tarefa.tag),
+                    style: TextStyle(
+                      color: tarefa.tag!.toLowerCase() == 'negocio'
+                          ? colors.backgroundColor
+                          : colors.whiteColor,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
+              if (horario.isNotEmpty)
+                _buildInfoChip(
+                  icon: Icons.access_time_rounded,
+                  label: horario,
+                  backgroundColor: colors.whiteColor.withOpacity(0.12),
+                  textColor: colors.whiteColor,
+                ),
+              _buildInfoChip(
+                icon: Icons.repeat_rounded,
+                label: recorrencia,
+                backgroundColor: colors.whiteColor.withOpacity(0.12),
+                textColor: colors.whiteColor,
+              ),
+            ],
+          ),
+          if (tarefa.tituloMeta != null && tarefa.tituloMeta!.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Text(
+              'Meta: ${tarefa.tituloMeta}',
+              style: TextStyle(
+                color: colors.whiteColor.withOpacity(0.85),
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
               ),
             ),
-          const SizedBox(height: 14),
-          // 🔧 BUG FIX: Só mostrar dias para tipos de recorrência que os utilizam
-          if (_shouldShowDias(tarefa.tipoRecorrencia))
+          ],
+          if (_shouldShowDias(tarefa.tipoRecorrencia)) ...[
+            const SizedBox(height: 14),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -472,7 +674,63 @@ class _GerenciamentoTarefasScreenState
                 _buildDiaBolinha('D', 'domingo', tarefa, colors),
               ],
             ),
+          ],
         ],
+      ),
+    );
+  }
+
+  Widget _buildInfoChip({
+    required IconData icon,
+    required String label,
+    required Color backgroundColor,
+    required Color textColor,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: 10,
+        vertical: 5,
+      ),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            size: 14,
+            color: textColor,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              color: textColor,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildErroStream(AppColors colors) {
+    return Center(
+      child: Text(
+        'Não foi possível atualizar suas tarefas.',
+        style: TextStyle(color: colors.greyFive),
+      ),
+    );
+  }
+
+  Widget _buildSemConexaoOuVazio(String texto, AppColors colors) {
+    return Center(
+      child: Text(
+        texto,
+        style: TextStyle(color: colors.greyFive),
       ),
     );
   }
@@ -487,7 +745,11 @@ class _GerenciamentoTarefasScreenState
         backgroundColor: colors.whiteColor,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios, color: colors.azulAlba, size: 20),
+          icon: Icon(
+            Icons.arrow_back_ios,
+            color: colors.azulAlba,
+            size: 20,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
@@ -504,201 +766,222 @@ class _GerenciamentoTarefasScreenState
         onPressed: () async {
           await Navigator.push(
             context,
-            MaterialPageRoute(builder: (_) => const CriarTarefaScreen()),
+            MaterialPageRoute(
+              builder: (_) => const CriarTarefaScreen(),
+            ),
           );
         },
-        child: Icon(Icons.add, color: colors.whiteColor),
-      ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              TextField(
-                controller: _buscaController,
-                onChanged: (value) => setState(() => _busca = value.trim()),
-                decoration: InputDecoration(
-                  prefixIcon: const Icon(Icons.search),
-                  hintText: 'Buscar tarefas...',
-                  suffixIcon: _busca.isNotEmpty
-                      ? IconButton(
-                          onPressed: () {
-                            _buscaController.clear();
-                            setState(() => _busca = '');
-                          },
-                          icon: const Icon(Icons.clear),
-                        )
-                      : null,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(18),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  IconButton(
-                    icon: Icon(
-                      Icons.arrow_back_ios,
-                      size: 18,
-                      color: colors.azulAlba,
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        _offsetDias -= 1;
-                        final base = DateTime.now().add(
-                          Duration(days: _offsetDias),
-                        );
-                        _mesDoCalendario = _meses[base.month - 1];
-                      });
-                    },
-                  ),
-                  Text(
-                    "$_mesDoCalendario ${DateTime.now().add(Duration(days: _offsetDias)).year}",
-                    style: TextStyle(
-                      color: colors.azulAlba,
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  IconButton(
-                    icon: Icon(
-                      Icons.arrow_forward_ios,
-                      size: 18,
-                      color: colors.azulAlba,
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        _offsetDias += 1;
-                        final base = DateTime.now().add(
-                          Duration(days: _offsetDias),
-                        );
-                        _mesDoCalendario = _meses[base.month - 1];
-                      });
-                    },
-                  ),
-                ],
-              ),
-              const SizedBox(height: 14),
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(children: _gerarCardsCalendario(colors)),
-              ),
-              const SizedBox(height: 32),
-              Text(
-                "Hoje",
-                style: TextStyle(
-                  color: colors.azulAlba,
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 16),
-              StreamBuilder<List<TarefaDto>>(
-                stream: _tarefasRepository.buscarTarefasStream(
-                  _busca,
-                  mes: null,
-                  dia: null,
-                ),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting &&
-                      !snapshot.hasData) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-
-                  final tarefas = snapshot.data ?? [];
-                  final tarefasDoDia = _filtrarTarefasDoDiaSelecionado(tarefas);
-
-                  if (tarefasDoDia.isEmpty) {
-                    return Center(
-                      child: Text(
-                        'Nenhuma tarefa para este dia.',
-                        style: TextStyle(color: colors.greyFive),
-                      ),
-                    );
-                  }
-
-                  return ListView.separated(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: tarefasDoDia.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 14),
-                    itemBuilder: (context, index) {
-                      return _buildHojeCard(tarefasDoDia[index], colors);
-                    },
-                  );
-                },
-              ),
-              const SizedBox(height: 40),
-              Row(
-                children: [
-                  Text(
-                    "Tarefas",
-                    style: TextStyle(
-                      color: colors.azulAlba,
-                      fontSize: 26,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(width: 20),
-                  _buildFiltroMes(colors),
-                ],
-              ),
-              const SizedBox(height: 20),
-              StreamBuilder<List<TarefaDto>>(
-                stream: _tarefasRepository.buscarTarefasStream(
-                  _busca,
-                  mes: _mesSelecionado,
-                  dia: null,
-                ),
-                builder: (context, snapshot) {
-                  if (!snapshot.hasData) return const SizedBox();
-
-                  final tarefas = snapshot.data!;
-
-                  final tarefasOrdenadas = List<TarefaDto>.from(tarefas);
-                  tarefasOrdenadas.sort((a, b) {
-                    final dataA = a.dataInicial ?? a.dataCriacao;
-                    final dataB = b.dataInicial ?? b.dataCriacao;
-                    return dataA.compareTo(dataB);
-                  });
-
-                  if (tarefasOrdenadas.isEmpty) {
-                    return Center(
-                      child: Text(
-                        "Nenhuma tarefa neste mês.",
-                        style: TextStyle(color: colors.greyFive),
-                      ),
-                    );
-                  }
-
-                  return ListView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: tarefasOrdenadas.length,
-                    itemBuilder: (context, index) =>
-                        _buildTimelineTask(tarefasOrdenadas[index], colors),
-                  );
-                },
-              ),
-              const SizedBox(height: 40),
-            ],
-          ),
+        child: Icon(
+          Icons.add,
+          color: colors.whiteColor,
         ),
+      ),
+      body: StreamBuilder<List<TarefaDto>>(
+        stream: _tarefasRepository.buscarTarefasStream(
+          _busca,
+          mes: null,
+          dia: null,
+        ),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting &&
+              !snapshot.hasData) {
+            return const Center(
+              child: CircularProgressIndicator(),
+            );
+          }
+
+          if (snapshot.hasError) {
+            return _buildErroStream(colors);
+          }
+
+          final tarefas = snapshot.data ?? [];
+
+          final tarefasDoDia = _filtrarTarefasDoDiaSelecionado(tarefas);
+          final tarefasDoMes = _filtrarTarefasDoMesSelecionado(tarefas);
+
+          return SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  TextField(
+                    controller: _buscaController,
+                    onChanged: (value) {
+                      setState(() {
+                        _busca = value.trim();
+                      });
+                    },
+                    decoration: InputDecoration(
+                      prefixIcon: const Icon(Icons.search),
+                      hintText: 'Buscar tarefas...',
+                      suffixIcon: _busca.isNotEmpty
+                          ? IconButton(
+                              onPressed: () {
+                                _buscaController.clear();
+
+                                setState(() {
+                                  _busca = '';
+                                });
+                              },
+                              icon: const Icon(Icons.clear),
+                            )
+                          : null,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      IconButton(
+                        icon: Icon(
+                          Icons.arrow_back_ios,
+                          size: 18,
+                          color: colors.azulAlba,
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _offsetDias -= 1;
+
+                            final base = DateTime.now().add(
+                              Duration(days: _offsetDias),
+                            );
+
+                            _mesDoCalendario = _meses[base.month - 1];
+                          });
+                        },
+                      ),
+                      Text(
+                        "$_mesDoCalendario ${DateTime.now().add(Duration(days: _offsetDias)).year}",
+                        style: TextStyle(
+                          color: colors.azulAlba,
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      IconButton(
+                        icon: Icon(
+                          Icons.arrow_forward_ios,
+                          size: 18,
+                          color: colors.azulAlba,
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _offsetDias += 1;
+
+                            final base = DateTime.now().add(
+                              Duration(days: _offsetDias),
+                            );
+
+                            _mesDoCalendario = _meses[base.month - 1];
+                          });
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: _gerarCardsCalendario(colors),
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+                  Text(
+                    "Tarefas do dia",
+                    style: TextStyle(
+                      color: colors.azulAlba,
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  if (tarefasDoDia.isEmpty)
+                    _buildSemConexaoOuVazio(
+                      'Nenhuma tarefa para este dia.',
+                      colors,
+                    )
+                  else
+                    ListView.separated(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: tarefasDoDia.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 14),
+                      itemBuilder: (context, index) {
+                        return _buildHojeCard(
+                          tarefasDoDia[index],
+                          colors,
+                        );
+                      },
+                    ),
+                  const SizedBox(height: 40),
+                  Row(
+                    children: [
+                      Text(
+                        "Tarefas",
+                        style: TextStyle(
+                          color: colors.azulAlba,
+                          fontSize: 26,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(width: 20),
+                      _buildFiltroMes(colors),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  if (tarefasDoMes.isEmpty)
+                    _buildSemConexaoOuVazio(
+                      "Nenhuma tarefa neste mês.",
+                      colors,
+                    )
+                  else
+                    ListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: tarefasDoMes.length,
+                      itemBuilder: (context, index) {
+                        return _buildTimelineTask(
+                          tarefasDoMes[index],
+                          colors,
+                        );
+                      },
+                    ),
+                  const SizedBox(height: 40),
+                ],
+              ),
+            ),
+          );
+        },
       ),
     );
   }
 
   Widget _buildFiltroMes(AppColors colors) {
     return PopupMenuButton<String>(
-      onSelected: (String novoMes) => setState(() => _mesSelecionado = novoMes),
-      itemBuilder: (context) => _meses
-          .map((mes) => PopupMenuItem(value: mes, child: Text(mes)))
-          .toList(),
+      onSelected: (String novoMes) {
+        setState(() {
+          _mesSelecionado = novoMes;
+        });
+      },
+      itemBuilder: (context) {
+        return _meses
+            .map(
+              (mes) => PopupMenuItem(
+                value: mes,
+                child: Text(mes),
+              ),
+            )
+            .toList();
+      },
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        padding: const EdgeInsets.symmetric(
+          horizontal: 10,
+          vertical: 4,
+        ),
         decoration: BoxDecoration(
           color: colors.neonGreen,
           borderRadius: BorderRadius.circular(10),
@@ -707,9 +990,16 @@ class _GerenciamentoTarefasScreenState
           children: [
             Text(
               _mesSelecionado,
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+              ),
             ),
-            Icon(Icons.keyboard_arrow_down, size: 18, color: colors.azulAlba),
+            Icon(
+              Icons.keyboard_arrow_down,
+              size: 18,
+              color: colors.azulAlba,
+            ),
           ],
         ),
       ),
@@ -717,20 +1007,39 @@ class _GerenciamentoTarefasScreenState
   }
 
   List<Widget> _gerarCardsCalendario(AppColors colors) {
-    List<Widget> cards = [];
-    DateTime base = DateTime.now().add(Duration(days: _offsetDias));
-    List<String> diasSemana = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sab"];
+    final cards = <Widget>[];
+
+    final base = DateTime.now().add(
+      Duration(days: _offsetDias),
+    );
+
+    final diasSemana = [
+      "Dom",
+      "Seg",
+      "Ter",
+      "Qua",
+      "Qui",
+      "Sex",
+      "Sab",
+    ];
 
     for (int i = 0; i < 7; i++) {
-      DateTime dataCard = base.add(Duration(days: i));
-      String diaNome = diasSemana[dataCard.weekday % 7];
-      String diaNum = dataCard.day.toString().padLeft(2, '0');
-      bool selecionado = _mesmoDia(_dataSelecionada, dataCard);
+      final dataCard = base.add(Duration(days: i));
+      final diaNome = diasSemana[dataCard.weekday % 7];
+      final diaNum = dataCard.day.toString().padLeft(2, '0');
+      final selecionado = _mesmoDia(_dataSelecionada, dataCard);
 
       cards.add(
-        _buildCardCalendario(diaNome, diaNum, selecionado, colors, dataCard),
+        _buildCardCalendario(
+          diaNome,
+          diaNum,
+          selecionado,
+          colors,
+          dataCard,
+        ),
       );
     }
+
     return cards;
   }
 
@@ -742,13 +1051,18 @@ class _GerenciamentoTarefasScreenState
     DateTime dataCompleta,
   ) {
     return GestureDetector(
-      onTap: () => setState(() {
-        _dataSelecionada = dataCompleta;
-        _mesDoCalendario = _meses[dataCompleta.month - 1];
-      }),
+      onTap: () {
+        setState(() {
+          _dataSelecionada = dataCompleta;
+          _mesDoCalendario = _meses[dataCompleta.month - 1];
+        });
+      },
       child: Container(
         margin: const EdgeInsets.only(right: 12),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        padding: const EdgeInsets.symmetric(
+          horizontal: 14,
+          vertical: 10,
+        ),
         decoration: BoxDecoration(
           color: selecionado ? colors.neonGreen : colors.whiteColor,
           borderRadius: BorderRadius.circular(15),
@@ -782,8 +1096,9 @@ class _GerenciamentoTarefasScreenState
 
   Widget _buildTimelineTask(TarefaDto tarefa, AppColors colors) {
     final concluida = _estaConcluidaLocal(tarefa);
-
     final dataExibicao = tarefa.dataInicial ?? tarefa.dataCriacao;
+    final horario = _formatarHorario(tarefa);
+    final recorrencia = _formatarRecorrencia(tarefa);
 
     return IntrinsicHeight(
       child: Row(
@@ -799,7 +1114,12 @@ class _GerenciamentoTarefasScreenState
                 ),
               ),
               const SizedBox(height: 4),
-              Expanded(child: Container(width: 2, color: colors.greyThree)),
+              Expanded(
+                child: Container(
+                  width: 2,
+                  color: colors.greyThree,
+                ),
+              ),
             ],
           ),
           const SizedBox(width: 16),
@@ -825,7 +1145,10 @@ class _GerenciamentoTarefasScreenState
                     onChanged: (_) => _toggleStatusTarefa(tarefa),
                     shape: const CircleBorder(),
                     activeColor: colors.neonGreen,
-                    side: BorderSide(color: colors.azulAlba, width: 2),
+                    side: BorderSide(
+                      color: colors.azulAlba,
+                      width: 2,
+                    ),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
@@ -851,11 +1174,36 @@ class _GerenciamentoTarefasScreenState
                             color: colors.azulAlba.withOpacity(0.7),
                           ),
                         ),
+                        const SizedBox(height: 6),
+                        Wrap(
+                          spacing: 6,
+                          runSpacing: 6,
+                          children: [
+                            if (horario.isNotEmpty)
+                              _buildInfoChip(
+                                icon: Icons.access_time_rounded,
+                                label: horario,
+                                backgroundColor:
+                                    colors.azulAlba.withOpacity(0.08),
+                                textColor: colors.azulAlba,
+                              ),
+                            _buildInfoChip(
+                              icon: Icons.repeat_rounded,
+                              label: recorrencia,
+                              backgroundColor:
+                                  colors.azulAlba.withOpacity(0.08),
+                              textColor: colors.azulAlba,
+                            ),
+                          ],
+                        ),
                       ],
                     ),
                   ),
                   IconButton(
-                    icon: Icon(Icons.more_vert, color: colors.azulAlba),
+                    icon: Icon(
+                      Icons.more_vert,
+                      color: colors.azulAlba,
+                    ),
                     onPressed: () => _mostrarOpcoesTarefa(tarefa),
                   ),
                 ],

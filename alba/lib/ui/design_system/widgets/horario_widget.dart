@@ -1,197 +1,298 @@
+import 'package:alba/ui/design_system/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 
-class HorarioWidget extends StatefulWidget {
+class HorarioWidget extends StatelessWidget {
   final String? horarioInicio;
   final String? horarioFim;
-  final Function(String? inicio, String? fim) onChanged;
+  final void Function(String? inicio, String? fim) onChanged;
 
   const HorarioWidget({
+    super.key,
     required this.horarioInicio,
     required this.horarioFim,
     required this.onChanged,
-    super.key,
   });
 
-  @override
-  State<HorarioWidget> createState() => _HorarioWidgetState();
-}
+  String? _normalizar(String? value) {
+    final texto = value?.trim();
 
-class _HorarioWidgetState extends State<HorarioWidget> {
-  late TextEditingController inicioController;
-  late TextEditingController fimController;
+    if (texto == null || texto.isEmpty) {
+      return null;
+    }
 
-  @override
-  void initState() {
-    super.initState();
-    inicioController = TextEditingController(text: widget.horarioInicio ?? '');
-    fimController = TextEditingController(text: widget.horarioFim ?? '');
+    return texto;
   }
 
-  @override
-  void didUpdateWidget(covariant HorarioWidget oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.horarioInicio != oldWidget.horarioInicio) {
-      inicioController.text = widget.horarioInicio ?? '';
+  TimeOfDay _converterParaTimeOfDay(String? value) {
+    final texto = _normalizar(value);
+
+    if (texto == null) {
+      return TimeOfDay.now();
     }
-    if (widget.horarioFim != oldWidget.horarioFim) {
-      fimController.text = widget.horarioFim ?? '';
+
+    final partes = texto.split(':');
+
+    if (partes.length != 2) {
+      return TimeOfDay.now();
     }
+
+    final hora = int.tryParse(partes[0]);
+    final minuto = int.tryParse(partes[1]);
+
+    if (hora == null || minuto == null) {
+      return TimeOfDay.now();
+    }
+
+    if (hora < 0 || hora > 23 || minuto < 0 || minuto > 59) {
+      return TimeOfDay.now();
+    }
+
+    return TimeOfDay(hour: hora, minute: minuto);
   }
 
-  @override
-  void dispose() {
-    inicioController.dispose();
-    fimController.dispose();
-    super.dispose();
+  String _formatarHorario(TimeOfDay horario) {
+    final hora = horario.hour.toString().padLeft(2, '0');
+    final minuto = horario.minute.toString().padLeft(2, '0');
+
+    return '$hora:$minuto';
   }
 
-  Future<void> _selecionarHorario(
-    TextEditingController controller,
-    bool isInicio,
-  ) async {
-    final agora = TimeOfDay.now();
+  Theme _buildTimePickerTheme({
+    required BuildContext context,
+    required Widget child,
+    required AppColors colors,
+  }) {
+    return Theme(
+      data: Theme.of(context).copyWith(
+        colorScheme: ColorScheme.light(
+          primary: colors.azulAlba,
+          onPrimary: colors.whiteColor,
+          surface: colors.whiteColor,
+          onSurface: colors.blackColor,
+          secondary: colors.neonGreen,
+        ),
+        timePickerTheme: TimePickerThemeData(
+          backgroundColor: colors.whiteColor,
+          hourMinuteColor: MaterialStateColor.resolveWith((states) {
+            if (states.contains(MaterialState.selected)) {
+              return colors.azulAlba.withOpacity(0.10);
+            }
 
-    TimeOfDay initialTime = agora;
+            return colors.inputColor;
+          }),
+          hourMinuteTextColor: MaterialStateColor.resolveWith((states) {
+            if (states.contains(MaterialState.selected)) {
+              return colors.azulAlba;
+            }
 
-    if (controller.text.isNotEmpty) {
-      final partes = controller.text.split(':');
-      if (partes.length == 2) {
-        final hora = int.tryParse(partes[0]);
-        final minuto = int.tryParse(partes[1]);
-        if (hora != null && minuto != null) {
-          initialTime = TimeOfDay(hour: hora, minute: minuto);
-        }
-      }
-    }
+            return colors.blackColor;
+          }),
+          dialBackgroundColor: colors.azulAlba.withOpacity(0.04),
+          dialHandColor: colors.azulAlba,
+          dialTextColor: MaterialStateColor.resolveWith((states) {
+            if (states.contains(MaterialState.selected)) {
+              return colors.whiteColor;
+            }
+
+            return colors.blackColor;
+          }),
+          dayPeriodColor: MaterialStateColor.resolveWith((states) {
+            if (states.contains(MaterialState.selected)) {
+              return colors.azulAlba;
+            }
+
+            return colors.inputColor;
+          }),
+          dayPeriodTextColor: MaterialStateColor.resolveWith((states) {
+            if (states.contains(MaterialState.selected)) {
+              return colors.whiteColor;
+            }
+
+            return colors.azulAlba;
+          }),
+          entryModeIconColor: colors.azulAlba,
+          helpTextStyle: TextStyle(
+            color: colors.azulAlba,
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
+        ),
+        textButtonTheme: TextButtonThemeData(
+          style: TextButton.styleFrom(
+            foregroundColor: colors.azulAlba,
+            textStyle: const TextStyle(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+      ),
+      child: child,
+    );
+  }
+
+  Future<void> _selecionarHorario({
+    required BuildContext context,
+    required bool ehInicio,
+  }) async {
+    final appColors = Theme.of(context).extension<AppColors>();
+    final colors = appColors ?? const AppColors();
+
+    final valorAtual = ehInicio ? horarioInicio : horarioFim;
 
     final horarioSelecionado = await showTimePicker(
       context: context,
-      initialTime: initialTime,
+      initialTime: _converterParaTimeOfDay(valorAtual),
       builder: (context, child) {
         return MediaQuery(
-          data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
-          child: child!,
+          data: MediaQuery.of(context).copyWith(
+            alwaysUse24HourFormat: true,
+          ),
+          child: _buildTimePickerTheme(
+            context: context,
+            colors: colors,
+            child: child ?? const SizedBox.shrink(),
+          ),
         );
       },
     );
 
-    if (horarioSelecionado != null) {
-      final hora = horarioSelecionado.hour.toString().padLeft(2, '0');
-      final minuto = horarioSelecionado.minute.toString().padLeft(2, '0');
-      final horarioFormatado = '$hora:$minuto';
+    if (horarioSelecionado == null) {
+      return;
+    }
 
-      setState(() {
-        controller.text = horarioFormatado;
-      });
+    final horarioFormatado = _formatarHorario(horarioSelecionado);
 
-      widget.onChanged(
-        inicioController.text.isEmpty ? null : inicioController.text,
-        fimController.text.isEmpty ? null : fimController.text,
+    if (ehInicio) {
+      onChanged(
+        horarioFormatado,
+        _normalizar(horarioFim),
+      );
+    } else {
+      onChanged(
+        _normalizar(horarioInicio),
+        horarioFormatado,
       );
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    final appColors = Theme.of(context).extension<AppColors>();
+    final corPrincipal = appColors?.azulAlba ?? Theme.of(context).primaryColor;
+
+    return Row(
       children: [
-        const Text(
-          'Horário da tarefa (opcional)',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
+        Expanded(
+          child: _CampoHorario(
+            valor: _normalizar(horarioInicio),
+            placeholder: 'Início',
+            corPrincipal: corPrincipal,
+            onTap: () => _selecionarHorario(
+              context: context,
+              ehInicio: true,
+            ),
+            onClear: () => onChanged(
+              null,
+              _normalizar(horarioFim),
+            ),
           ),
         ),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(
-              child: GestureDetector(
-                onTap: () => _selecionarHorario(inicioController, true),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 12,
-                  ),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.grey[700]!),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(
-                        Icons.access_time,
-                        color: Colors.grey,
-                        size: 18,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          inicioController.text.isEmpty
-                              ? 'Início'
-                              : inicioController.text,
-                          style: TextStyle(
-                            color: inicioController.text.isEmpty
-                                ? Colors.grey[600]
-                                : Colors.white,
-                            fontSize: 14,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Text(
+            'até',
+            style: TextStyle(
+              color: Colors.grey.shade600,
+              fontWeight: FontWeight.w500,
             ),
-            const SizedBox(width: 12),
-            Text(
-              'até',
-              style: TextStyle(color: Colors.grey[500], fontSize: 14),
+          ),
+        ),
+        Expanded(
+          child: _CampoHorario(
+            valor: _normalizar(horarioFim),
+            placeholder: 'Fim',
+            corPrincipal: corPrincipal,
+            onTap: () => _selecionarHorario(
+              context: context,
+              ehInicio: false,
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: GestureDetector(
-                onTap: () => _selecionarHorario(fimController, false),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 12,
-                  ),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.grey[700]!),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(
-                        Icons.access_time,
-                        color: Colors.grey,
-                        size: 18,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          fimController.text.isEmpty
-                              ? 'Fim'
-                              : fimController.text,
-                          style: TextStyle(
-                            color: fimController.text.isEmpty
-                                ? Colors.grey[600]
-                                : Colors.white,
-                            fontSize: 14,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+            onClear: () => onChanged(
+              _normalizar(horarioInicio),
+              null,
             ),
-          ],
+          ),
         ),
       ],
+    );
+  }
+}
+
+class _CampoHorario extends StatelessWidget {
+  final String? valor;
+  final String placeholder;
+  final Color corPrincipal;
+  final VoidCallback onTap;
+  final VoidCallback onClear;
+
+  const _CampoHorario({
+    required this.valor,
+    required this.placeholder,
+    required this.corPrincipal,
+    required this.onTap,
+    required this.onClear,
+  });
+
+  bool get temValor {
+    return valor != null && valor!.trim().isNotEmpty;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 56,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: BoxDecoration(
+          color: Colors.grey.shade50,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey.shade300),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              Icons.access_time_rounded,
+              color: corPrincipal.withOpacity(0.6),
+              size: 22,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                temValor ? valor! : placeholder,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: temValor ? Colors.black87 : Colors.grey.shade500,
+                  fontSize: 15,
+                  fontWeight: temValor ? FontWeight.w600 : FontWeight.normal,
+                ),
+              ),
+            ),
+            if (temValor)
+              IconButton(
+                onPressed: onClear,
+                icon: const Icon(Icons.close, size: 18),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(
+                  minWidth: 28,
+                  minHeight: 28,
+                ),
+              ),
+          ],
+        ),
+      ),
     );
   }
 }

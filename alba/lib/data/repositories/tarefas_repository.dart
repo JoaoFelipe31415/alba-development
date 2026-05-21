@@ -1,9 +1,7 @@
-import 'package:alba/data/services/recorrencia_service.dart';
+import 'package:alba/data/services/conexao_service.dart';
 import 'package:alba/domain/dto/tarefa_dto.dart';
-import 'package:alba/domain/entities/recorrencia.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:alba/data/services/conexao_service.dart';
 
 class TarefasRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -13,6 +11,67 @@ class TarefasRepository {
   static const String _collection = 'Tarefas';
 
   String get _userId => _auth.currentUser?.uid ?? '';
+
+  String? _normalizarString(String? value) {
+    final texto = value?.trim();
+
+    if (texto == null || texto.isEmpty) {
+      return null;
+    }
+
+    return texto;
+  }
+
+  String? _horarioInicioCompatibilidade(TarefaDto tarefa) {
+    return _normalizarString(tarefa.horarioInicio) ??
+        _normalizarString(tarefa.horario);
+  }
+
+  String? _horarioFimCompatibilidade(TarefaDto tarefa) {
+    return _normalizarString(tarefa.horarioFim);
+  }
+
+  void _padronizarAntesDeSalvar(TarefaDto tarefa) {
+    final inicio = _horarioInicioCompatibilidade(tarefa);
+    final fim = _horarioFimCompatibilidade(tarefa);
+
+    // Campo antigo mantido por compatibilidade.
+    tarefa.horario = inicio;
+
+    // Campos novos.
+    tarefa.horarioInicio = inicio;
+    tarefa.horarioFim = fim;
+
+    tarefa.userId = _userId;
+
+    if (tarefa.status.trim().isEmpty) {
+      tarefa.status = 'pendente';
+    }
+  }
+
+  List<TarefaDto> _converterSnapshotParaTarefas(
+    QuerySnapshot<Map<String, dynamic>> querySnapshot,
+  ) {
+    final tarefas = <TarefaDto>[];
+
+    for (final doc in querySnapshot.docs) {
+      try {
+        final tarefa = TarefaDto.fromMap(doc.data(), doc.id);
+
+        final pertenceAoUsuario = tarefa.userId == _userId;
+        final tituloValido = tarefa.tituloTarefa.trim().isNotEmpty;
+
+        if (pertenceAoUsuario && tituloValido) {
+          tarefas.add(tarefa);
+        }
+      } catch (e) {
+        // Documento inválido vindo do Firestore/n8n não quebra a interface.
+        print('Documento de tarefa inválido ignorado: ${doc.id} - $e');
+      }
+    }
+
+    return tarefas;
+  }
 
   Future<String> criarTarefa(TarefaDto tarefa) async {
     try {
@@ -28,108 +87,35 @@ class TarefasRepository {
         );
       }
 
-      tarefa.userId = _userId;
+      _padronizarAntesDeSalvar(tarefa);
+
       tarefa.dataCriacao = DateTime.now();
-      tarefa.status = 'pendente';
 
       final docRef = _firestore.collection(_collection).doc();
       tarefa.id = docRef.id;
 
       await docRef.set(tarefa.toMap());
 
-      if (tarefa.tipoRecorrencia != TipoRecorrencia.naoRepete &&
-          tarefa.dataInicial != null) {
-        await _criarTarefasRecorrentes(tarefa);
-      }
+      // IMPORTANTE:
+      // Não criamos mais documentos recorrentes automaticamente.
+      // A recorrência agora fica dentro do próprio documento.
+      // Modelo:
+      // 1 tarefa = 1 documento no Firestore.
 
       return docRef.id;
     } on FirebaseException catch (e) {
       print('ERRO FIREBASE criarTarefa: code=${e.code}, message=${e.message}');
+
+      if (e.code == 'unavailable') {
+        throw Exception(
+          'Sem conexão com a internet. Verifique sua rede e tente novamente.',
+        );
+      }
+
       throw Exception('Não foi possível salvar. Tente novamente.');
     } catch (e) {
       print('ERRO GERAL criarTarefa: $e');
       rethrow;
-    }
-  }
-
-  Future<void> _criarTarefasRecorrentes(TarefaDto tarefaOriginal) async {
-    try {
-      List<DateTime> ocorrencias = [];
-      final dataInicial = tarefaOriginal.dataInicial!;
-
-      final dataLimiteAno = DateTime(dataInicial.year, 12, 31, 23, 59, 59);
-
-      if (tarefaOriginal.tipoRecorrencia == TipoRecorrencia.mensal) {
-        DateTime dataAux = dataInicial;
-        ocorrencias.add(dataAux);
-
-        while (true) {
-          final proximoMes = DateTime(
-            dataAux.year,
-            dataAux.month + 1,
-            dataAux.day,
-          );
-
-          if (proximoMes.month != (dataAux.month % 12) + 1) {
-            dataAux = DateTime(proximoMes.year, proximoMes.month, 0);
-          } else {
-            dataAux = proximoMes;
-          }
-
-          if (dataAux.isAfter(dataLimiteAno)) {
-            break; // Travou no fim do ano!
-          }
-          ocorrencias.add(dataAux);
-        }
-      } else {
-        final mesesRestantes = 12 - dataInicial.month + 1;
-
-        ocorrencias = RecorrenciaService.gerarProximasOcorrencias(
-          dataInicial: dataInicial,
-          tipo: tarefaOriginal.tipoRecorrencia,
-          configuracao: tarefaOriginal.configuracaoRecorrencia,
-          quantidade: 100,
-          mesesProximos: mesesRestantes,
-        );
-        ocorrencias = ocorrencias
-            .where((dt) => !dt.isAfter(dataLimiteAno))
-            .toList();
-      }
-
-      final batch = _firestore.batch();
-
-      for (int i = 1; i < ocorrencias.length; i++) {
-        final dataProjetada = ocorrencias[i];
-        final docRef = _firestore.collection(_collection).doc();
-
-        final tarefaRecorrente = TarefaDto(
-          tituloTarefa: tarefaOriginal.tituloTarefa,
-          diasRealizacao:
-              [], // 🔧 BUG FIX: Tarefas recorrentes "naoRepete" não devem ter dias
-          horario: tarefaOriginal.horario,
-          horarioInicio: tarefaOriginal.horarioInicio,
-          horarioFim: tarefaOriginal.horarioFim,
-          dataInicial: dataProjetada,
-          metaId: tarefaOriginal.metaId,
-          tituloMeta: tarefaOriginal.tituloMeta,
-          tag: tarefaOriginal.tag,
-          status: 'pendente',
-          userId: _userId,
-          dataCriacao: dataProjetada,
-          tipoRecorrencia: TipoRecorrencia.naoRepete,
-          configuracaoRecorrencia: null,
-        );
-
-        final dadosMap = tarefaRecorrente.toMap();
-        dadosMap['id'] = docRef.id;
-        dadosMap['tipoRecorrencia'] = 'naoRepete';
-
-        batch.set(docRef, dadosMap);
-      }
-
-      await batch.commit();
-    } catch (e) {
-      print('AVISO: Erro ao criar tarefas recorrentes: $e');
     }
   }
 
@@ -145,16 +131,16 @@ class TarefasRepository {
           .orderBy('dataCriacao', descending: true)
           .get();
 
-      return querySnapshot.docs
-          .map((doc) => TarefaDto.fromMap(doc.data(), doc.id))
-          .toList();
+      return _converterSnapshotParaTarefas(querySnapshot);
     } on FirebaseException catch (e) {
       print('ERRO FIREBASE obterTarefas: code=${e.code}, message=${e.message}');
+
       if (e.code == 'unavailable') {
         throw Exception(
           'Sem conexão com a internet. Verifique sua rede e tente novamente.',
         );
       }
+
       throw Exception('Não foi possível carregar as tarefas. Tente novamente.');
     } catch (e) {
       print('ERRO GERAL obterTarefas: $e');
@@ -163,27 +149,27 @@ class TarefasRepository {
   }
 
   Stream<List<TarefaDto>> obterTarefasStream() {
-    try {
-      if (_userId.isEmpty) {
-        throw Exception('Usuário não autenticado.');
+    if (_userId.isEmpty) {
+      return Stream.error(Exception('Usuário não autenticado.'));
+    }
+
+    return _firestore
+        .collection(_collection)
+        .where('userId', isEqualTo: _userId)
+        .orderBy('dataCriacao', descending: true)
+        .snapshots()
+        .map(_converterSnapshotParaTarefas)
+        .handleError((error) {
+      print('ERRO STREAM obterTarefasStream: $error');
+
+      if (error is FirebaseException && error.code == 'unavailable') {
+        throw Exception(
+          'Sem conexão com a internet. Verifique sua rede.',
+        );
       }
 
-      return _firestore
-          .collection(_collection)
-          .where('userId', isEqualTo: _userId)
-          .orderBy('dataCriacao', descending: true)
-          .snapshots()
-          .map(
-            (querySnapshot) => querySnapshot.docs
-                .map((doc) => TarefaDto.fromMap(doc.data(), doc.id))
-                .toList(),
-          );
-    } catch (e) {
-      print('ERRO GERAL obterTarefasStream: $e');
-      throw Exception(
-        'Não foi possível carregar as tarefas em tempo real. Tente novamente.',
-      );
-    }
+      throw Exception('Não foi possível atualizar suas tarefas.');
+    });
   }
 
   Future<TarefaDto?> obterTarefaPorId(String id) async {
@@ -212,11 +198,13 @@ class TarefasRepository {
       print(
         'ERRO FIREBASE obterTarefaPorId: code=${e.code}, message=${e.message}',
       );
+
       if (e.code == 'unavailable') {
         throw Exception(
           'Sem conexão com a internet. Verifique sua rede e tente novamente.',
         );
       }
+
       throw Exception('Não foi possível carregar a tarefa. Tente novamente.');
     } catch (e) {
       print('ERRO GERAL obterTarefaPorId: $e');
@@ -234,13 +222,20 @@ class TarefasRepository {
         throw Exception('ID da tarefa é obrigatório para atualizar.');
       }
 
+      _padronizarAntesDeSalvar(tarefa);
+
       final updateData = {
         'userId': _userId,
         'tituloTarefa': tarefa.tituloTarefa,
         'diasRealizacao': tarefa.diasRealizacao,
-        'horario': tarefa.horario,
+
+        // Campo antigo mantido por compatibilidade.
+        'horario': tarefa.horarioInicio,
+
+        // Campos novos.
         'horarioInicio': tarefa.horarioInicio,
         'horarioFim': tarefa.horarioFim,
+
         'dataInicial': tarefa.dataInicial != null
             ? Timestamp.fromDate(tarefa.dataInicial!)
             : null,
@@ -260,6 +255,13 @@ class TarefasRepository {
       print(
         'ERRO FIREBASE atualizarTarefa: code=${e.code}, message=${e.message}',
       );
+
+      if (e.code == 'unavailable') {
+        throw Exception(
+          'Sem conexão com a internet. Verifique sua rede e tente novamente.',
+        );
+      }
+
       throw Exception('Não foi possível salvar. Tente novamente.');
     } catch (e) {
       print('ERRO GERAL atualizarTarefa: $e');
@@ -278,11 +280,13 @@ class TarefasRepository {
       print(
         'ERRO FIREBASE excluirTarefa: code=${e.code}, message=${e.message}',
       );
+
       if (e.code == 'unavailable') {
         throw Exception(
           'Sem conexão com a internet. Verifique sua rede e tente novamente.',
         );
       }
+
       throw Exception('Não foi possível excluir. Tente novamente.');
     } catch (e) {
       print('ERRO GERAL excluirTarefa: $e');
@@ -299,32 +303,31 @@ class TarefasRepository {
       final querySnapshot = await _firestore
           .collection(_collection)
           .where('userId', isEqualTo: _userId)
+          .orderBy('dataCriacao', descending: true)
           .get();
 
-      final tarefas = querySnapshot.docs
-          .map((doc) => TarefaDto.fromMap(doc.data(), doc.id))
-          .toList();
+      final tarefas = _converterSnapshotParaTarefas(querySnapshot);
 
-      if (titulo.isEmpty) {
+      final termo = titulo.trim().toLowerCase();
+
+      if (termo.isEmpty) {
         return tarefas;
       }
 
-      return tarefas
-          .where(
-            (tarefa) => tarefa.tituloTarefa.toLowerCase().contains(
-              titulo.toLowerCase(),
-            ),
-          )
-          .toList();
+      return tarefas.where((tarefa) {
+        return tarefa.tituloTarefa.toLowerCase().contains(termo);
+      }).toList();
     } on FirebaseException catch (e) {
       print(
         'ERRO FIREBASE buscarTarefasPorTitulo: code=${e.code}, message=${e.message}',
       );
+
       if (e.code == 'unavailable') {
         throw Exception(
           'Sem conexão com a internet. Verifique sua rede e tente novamente.',
         );
       }
+
       throw Exception('Não foi possível buscar as tarefas. Tente novamente.');
     } catch (e) {
       print('ERRO GERAL buscarTarefasPorTitulo: $e');
@@ -337,71 +340,68 @@ class TarefasRepository {
     String? mes,
     int? dia,
   }) {
+    if (_userId.isEmpty) {
+      return Stream.error(Exception('Usuário não autenticado.'));
+    }
+
+    return _firestore
+        .collection(_collection)
+        .where('userId', isEqualTo: _userId)
+        .orderBy('dataCriacao', descending: true)
+        .snapshots()
+        .map((querySnapshot) {
+      final tarefas = _converterSnapshotParaTarefas(querySnapshot);
+
+      final termo = titulo.trim().toLowerCase();
+
+      if (termo.isEmpty) {
+        return tarefas;
+      }
+
+      return tarefas.where((tarefa) {
+        return tarefa.tituloTarefa.toLowerCase().contains(termo);
+      }).toList();
+    }).handleError((error) {
+      print('ERRO STREAM buscarTarefasStream: $error');
+
+      if (error is FirebaseException && error.code == 'unavailable') {
+        throw Exception(
+          'Sem conexão com a internet. Verifique sua rede.',
+        );
+      }
+
+      throw Exception('Não foi possível atualizar suas tarefas.');
+    });
+  }
+
+  Future<void> atualizarStatus(String id, String novoStatus) async {
     try {
       if (_userId.isEmpty) {
         throw Exception('Usuário não autenticado.');
       }
 
-      return _firestore
-          .collection(_collection)
-          .where('userId', isEqualTo: _userId)
-          .orderBy('dataCriacao', descending: true)
-          .snapshots()
-          .map((querySnapshot) {
-            final tarefas = querySnapshot.docs
-                .map((doc) => TarefaDto.fromMap(doc.data(), doc.id))
-                .toList();
+      await _firestore.collection(_collection).doc(id).update({
+        'status': novoStatus,
+        'dataConclusao': novoStatus == 'concluida'
+            ? FieldValue.serverTimestamp()
+            : null,
+      });
+    } on FirebaseException catch (e) {
+      print(
+        'ERRO FIREBASE atualizarStatus: code=${e.code}, message=${e.message}',
+      );
 
-            final mesesMap = {
-              'Janeiro': 1,
-              'Fevereiro': 2,
-              'Março': 3,
-              'Abril': 4,
-              'Maio': 5,
-              'Junho': 6,
-              'Julho': 7,
-              'Agosto': 8,
-              'Setembro': 9,
-              'Outubro': 10,
-              'Novembro': 11,
-              'Dezembro': 12,
-            };
+      if (e.code == 'unavailable') {
+        throw Exception(
+          'Sem conexão com a internet. Verifique sua rede e tente novamente.',
+        );
+      }
 
-            return tarefas.where((tarefa) {
-              final bateTitulo =
-                  titulo.isEmpty ||
-                  tarefa.tituloTarefa.toLowerCase().contains(
-                    titulo.toLowerCase(),
-                  );
-
-              var bateMes = true;
-              if (mes != null && mesesMap.containsKey(mes)) {
-                bateMes =
-                    (tarefa.dataInicial ?? tarefa.dataCriacao).month ==
-                    mesesMap[mes];
-              }
-
-              var bateDia = true;
-              if (dia != null) {
-                bateDia = (tarefa.dataInicial ?? tarefa.dataCriacao).day == dia;
-              }
-
-              return bateTitulo && bateMes && bateDia;
-            }).toList();
-          });
+      throw Exception('Não foi possível atualizar a tarefa.');
     } catch (e) {
-      print('ERRO GERAL buscarTarefasStream: $e');
-      throw Exception('Não foi possível buscar as tarefas.');
+      print('ERRO GERAL atualizarStatus: $e');
+      rethrow;
     }
-  }
-
-  Future<void> atualizarStatus(String id, String novoStatus) async {
-    await _firestore.collection(_collection).doc(id).update({
-      'status': novoStatus,
-      'dataConclusao': novoStatus == 'concluida'
-          ? FieldValue.serverTimestamp()
-          : null,
-    });
   }
 
   Future<List<TarefaDto>> obterTarefasConcluidas(String userId) async {
@@ -412,9 +412,17 @@ class TarefasRepository {
           .where('status', isEqualTo: 'concluida')
           .get();
 
-      return querySnapshot.docs
-          .map((doc) => TarefaDto.fromMap(doc.data(), doc.id))
-          .toList();
+      final tarefas = <TarefaDto>[];
+
+      for (final doc in querySnapshot.docs) {
+        try {
+          tarefas.add(TarefaDto.fromMap(doc.data(), doc.id));
+        } catch (e) {
+          print('Documento concluído inválido ignorado: ${doc.id} - $e');
+        }
+      }
+
+      return tarefas;
     } catch (e) {
       print('Erro ao buscar concluídas: $e');
       return [];

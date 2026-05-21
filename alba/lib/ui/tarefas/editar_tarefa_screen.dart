@@ -5,14 +5,17 @@ import 'package:alba/domain/dto/tarefa_dto.dart';
 import 'package:alba/domain/entities/recorrencia.dart';
 import 'package:alba/domain/validators/tarefa_validator.dart';
 import 'package:alba/ui/design_system/modals/frequencia_modal.dart';
+import 'package:alba/ui/design_system/theme/app_colors.dart';
 import 'package:alba/ui/design_system/widgets/horario_widget.dart';
 import 'package:flutter/material.dart';
-import 'package:alba/ui/design_system/theme/app_colors.dart';
 
 class EditarTarefaScreen extends StatefulWidget {
   final TarefaDto tarefa;
 
-  const EditarTarefaScreen({super.key, required this.tarefa});
+  const EditarTarefaScreen({
+    super.key,
+    required this.tarefa,
+  });
 
   @override
   State<EditarTarefaScreen> createState() => _EditarTarefaScreenState();
@@ -25,7 +28,6 @@ class _EditarTarefaScreenState extends State<EditarTarefaScreen> {
   final MetasRepository _metasRepository = MetasRepository();
 
   late TextEditingController _tituloController;
-  late TextEditingController _horarioController;
   late TextEditingController _dataInicialController;
 
   bool _salvando = false;
@@ -34,13 +36,16 @@ class _EditarTarefaScreenState extends State<EditarTarefaScreen> {
 
   List<String> _diasSelecionados = [];
   List<MetaDto> _metas = [];
+
   MetaDto? _metaSelecionada;
   String? _tagSelecionada;
 
   TipoRecorrencia _tipoRecorrenciaSelecionado = TipoRecorrencia.naoRepete;
   ConfiguracaoRecorrencia? _configuracaoRecorrencia;
+
   String? _horarioInicio;
   String? _horarioFim;
+
   DateTime? _dataInicial;
 
   final List<String> _diasSemana = const [
@@ -55,6 +60,7 @@ class _EditarTarefaScreenState extends State<EditarTarefaScreen> {
 
   List<MetaDto> get _metasFiltradas {
     if (_tagSelecionada == null) return [];
+
     return _metas
         .where((meta) => meta.tag.toLowerCase() == _tagSelecionada)
         .toList();
@@ -63,44 +69,137 @@ class _EditarTarefaScreenState extends State<EditarTarefaScreen> {
   @override
   void initState() {
     super.initState();
-    _tituloController = TextEditingController(text: widget.tarefa.tituloTarefa);
-    _horarioController = TextEditingController(
-      text: widget.tarefa.horario ?? '',
+
+    _tituloController = TextEditingController(
+      text: widget.tarefa.tituloTarefa,
     );
+
     _dataInicialController = TextEditingController(
       text: widget.tarefa.dataInicial != null
           ? '${widget.tarefa.dataInicial!.day.toString().padLeft(2, '0')}/${widget.tarefa.dataInicial!.month.toString().padLeft(2, '0')}/${widget.tarefa.dataInicial!.year}'
           : '',
     );
-    _diasSelecionados = widget.tarefa.diasRealizacao
-        .map((dia) => dia.toLowerCase())
-        .toList();
-    _vincularMeta = widget.tarefa.metaId != null;
-    _tagSelecionada = widget.tarefa.tag?.toLowerCase();
+
     _tipoRecorrenciaSelecionado = widget.tarefa.tipoRecorrencia;
     _configuracaoRecorrencia = widget.tarefa.configuracaoRecorrencia;
-    _horarioInicio = widget.tarefa.horarioInicio;
+
+    final diasConfig = widget.tarefa.configuracaoRecorrencia?.diasSemana;
+
+    if (_tipoRecorrenciaSelecionado == TipoRecorrencia.personalizado &&
+        diasConfig != null &&
+        diasConfig.isNotEmpty) {
+      _diasSelecionados = diasConfig
+          .map((dia) => dia.toLowerCase().trim())
+          .toList();
+    } else {
+      _diasSelecionados = widget.tarefa.diasRealizacao
+          .map((dia) => dia.toLowerCase().trim())
+          .toList();
+    }
+
+    _vincularMeta =
+        widget.tarefa.metaId != null && widget.tarefa.metaId!.trim().isNotEmpty;
+
+    _tagSelecionada = widget.tarefa.tag?.toLowerCase().trim();
+
+    _horarioInicio = widget.tarefa.horarioInicio ?? widget.tarefa.horario;
     _horarioFim = widget.tarefa.horarioFim;
+
     _dataInicial = widget.tarefa.dataInicial;
+
     _carregarMetas();
   }
 
   @override
   void dispose() {
     _tituloController.dispose();
-    _horarioController.dispose();
     _dataInicialController.dispose();
     super.dispose();
+  }
+
+  String? _normalizarHorario(String? value) {
+    final texto = value?.trim();
+
+    if (texto == null || texto.isEmpty) {
+      return null;
+    }
+
+    return texto;
+  }
+
+  String _diaDaSemana(DateTime data) {
+    const dias = [
+      'segunda',
+      'terca',
+      'quarta',
+      'quinta',
+      'sexta',
+      'sabado',
+      'domingo',
+    ];
+
+    return dias[data.weekday - 1];
+  }
+
+  List<String> _diasRealizacaoParaSalvar({
+    TipoRecorrencia? tipo,
+    ConfiguracaoRecorrencia? config,
+  }) {
+    final tipoFinal = tipo ?? _tipoRecorrenciaSelecionado;
+
+    switch (tipoFinal) {
+      case TipoRecorrencia.naoRepete:
+        return [];
+
+      case TipoRecorrencia.diaria:
+        return List<String>.from(_diasSemana);
+
+      case TipoRecorrencia.segAVinco:
+        return [
+          'segunda',
+          'terca',
+          'quarta',
+          'quinta',
+          'sexta',
+        ];
+
+      case TipoRecorrencia.semanal:
+        if (_dataInicial == null) return [];
+        return [_diaDaSemana(_dataInicial!)];
+
+      case TipoRecorrencia.personalizado:
+        return List<String>.from(config?.diasSemana ?? _diasSelecionados);
+
+      case TipoRecorrencia.mensal:
+      case TipoRecorrencia.anual:
+        return [];
+    }
+  }
+
+  ConfiguracaoRecorrencia? _configuracaoParaSalvar(
+    List<String> diasParaSalvar,
+  ) {
+    if (_tipoRecorrenciaSelecionado != TipoRecorrencia.personalizado) {
+      return null;
+    }
+
+    return ConfiguracaoRecorrencia(
+      diasSemana: List<String>.from(diasParaSalvar),
+      intervaloEmDias: _configuracaoRecorrencia?.intervaloEmDias,
+    );
   }
 
   Future<void> _carregarMetas() async {
     try {
       final metas = await _metasRepository.obterMetas();
+
       MetaDto? metaInicial;
 
-      if (widget.tarefa.metaId != null) {
+      final metaId = widget.tarefa.metaId;
+
+      if (metaId != null && metaId.trim().isNotEmpty) {
         try {
-          metaInicial = metas.firstWhere((m) => m.id == widget.tarefa.metaId);
+          metaInicial = metas.firstWhere((meta) => meta.id == metaId);
         } catch (_) {
           metaInicial = null;
         }
@@ -111,11 +210,18 @@ class _EditarTarefaScreenState extends State<EditarTarefaScreen> {
       setState(() {
         _metas = metas;
         _metaSelecionada = metaInicial;
+
+        if (_tagSelecionada == null && metaInicial != null) {
+          _tagSelecionada = metaInicial.tag.toLowerCase().trim();
+        }
+
         _carregandoMetas = false;
       });
     } catch (e) {
       if (!mounted) return;
+
       debugPrint('Erro ao carregar metas: $e');
+
       setState(() {
         _metas = [];
         _carregandoMetas = false;
@@ -123,57 +229,108 @@ class _EditarTarefaScreenState extends State<EditarTarefaScreen> {
     }
   }
 
-  Future<void> _selecionarData() async {
-    final dataSelecionada = await showDatePicker(
-      context: context,
-      initialDate: _dataInicial ?? DateTime.now(),
-      firstDate: DateTime.now(),
-      lastDate: DateTime(DateTime.now().year + 2),
-    );
+  Theme _buildDatePickerTheme({
+    required BuildContext context,
+    required Widget child,
+    required AppColors colors,
+  }) {
+    return Theme(
+      data: Theme.of(context).copyWith(
+        colorScheme: ColorScheme.light(
+          primary: colors.azulAlba,
+          onPrimary: colors.whiteColor,
+          surface: colors.whiteColor,
+          onSurface: colors.azulAlba,
+          secondary: colors.neonGreen,
+        ),
+        datePickerTheme: DatePickerThemeData(
+          backgroundColor: colors.whiteColor,
+          headerBackgroundColor: colors.whiteColor,
+          headerForegroundColor: colors.azulAlba,
+          surfaceTintColor: colors.whiteColor,
+          dayForegroundColor: MaterialStateProperty.resolveWith((states) {
+            if (states.contains(MaterialState.selected)) {
+              return colors.whiteColor;
+            }
 
-    if (dataSelecionada != null) {
-      setState(() {
-        _dataInicial = dataSelecionada;
-        _dataInicialController.text =
-            '${dataSelecionada.day.toString().padLeft(2, '0')}/${dataSelecionada.month.toString().padLeft(2, '0')}/${dataSelecionada.year}';
-      });
-    }
+            if (states.contains(MaterialState.disabled)) {
+              return colors.greyThree;
+            }
+
+            return colors.blackColor;
+          }),
+          dayBackgroundColor: MaterialStateProperty.resolveWith((states) {
+            if (states.contains(MaterialState.selected)) {
+              return colors.azulAlba;
+            }
+
+            return null;
+          }),
+          todayForegroundColor: MaterialStateProperty.all(colors.azulAlba),
+          todayBackgroundColor: MaterialStateProperty.all(
+            colors.neonGreen.withOpacity(0.25),
+          ),
+          todayBorder: BorderSide(
+            color: colors.neonGreen,
+            width: 2,
+          ),
+        ),
+        textButtonTheme: TextButtonThemeData(
+          style: TextButton.styleFrom(
+            foregroundColor: colors.azulAlba,
+            textStyle: const TextStyle(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+      ),
+      child: child,
+    );
   }
 
-  Future<void> _selecionarHorario() async {
-    final agora = TimeOfDay.now();
-    TimeOfDay initialTime = agora;
+  Future<void> _selecionarData() async {
+    final colors = Theme.of(context).extension<AppColors>()!;
 
-    if (_horarioController.text.isNotEmpty) {
-      final partes = _horarioController.text.split(':');
-      if (partes.length == 2) {
-        final hora = int.tryParse(partes[0]);
-        final minuto = int.tryParse(partes[1]);
-        if (hora != null && minuto != null) {
-          initialTime = TimeOfDay(hour: hora, minute: minuto);
-        }
-      }
+    final hoje = DateTime.now();
+
+    final primeiraData = DateTime(hoje.year - 5);
+    final ultimaData = DateTime(hoje.year + 5);
+
+    DateTime dataInicialPicker = _dataInicial ?? hoje;
+
+    if (dataInicialPicker.isBefore(primeiraData)) {
+      dataInicialPicker = primeiraData;
     }
 
-    final horarioSelecionado = await showTimePicker(
+    if (dataInicialPicker.isAfter(ultimaData)) {
+      dataInicialPicker = ultimaData;
+    }
+
+    final dataSelecionada = await showDatePicker(
       context: context,
-      initialTime: initialTime,
+      initialDate: dataInicialPicker,
+      firstDate: primeiraData,
+      lastDate: ultimaData,
       builder: (context, child) {
-        return MediaQuery(
-          data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
-          child: child!,
+        return _buildDatePickerTheme(
+          context: context,
+          colors: colors,
+          child: child ?? const SizedBox.shrink(),
         );
       },
     );
 
-    if (horarioSelecionado != null) {
-      final hora = horarioSelecionado.hour.toString().padLeft(2, '0');
-      final minuto = horarioSelecionado.minute.toString().padLeft(2, '0');
+    if (dataSelecionada == null) return;
 
-      setState(() {
-        _horarioController.text = '$hora:$minuto';
-      });
-    }
+    setState(() {
+      _dataInicial = dataSelecionada;
+      _dataInicialController.text =
+          '${dataSelecionada.day.toString().padLeft(2, '0')}/${dataSelecionada.month.toString().padLeft(2, '0')}/${dataSelecionada.year}';
+
+      if (_tipoRecorrenciaSelecionado == TipoRecorrencia.semanal) {
+        _diasSelecionados = [_diaDaSemana(dataSelecionada)];
+      }
+    });
   }
 
   void _abrirModalFrequencia() {
@@ -185,29 +342,14 @@ class _EditarTarefaScreenState extends State<EditarTarefaScreen> {
         onConfirm: (tipo, config) {
           setState(() {
             _tipoRecorrenciaSelecionado = tipo;
-            _configuracaoRecorrencia = config;
 
-            switch (tipo) {
-              case TipoRecorrencia.diaria:
-                _diasSelecionados.clear();
-                _diasSelecionados.addAll(_diasSemana);
-                break;
-              case TipoRecorrencia.segAVinco:
-                _diasSelecionados.clear();
-                _diasSelecionados.addAll([
-                  'segunda',
-                  'terca',
-                  'quarta',
-                  'quinta',
-                  'sexta',
-                ]);
-                break;
-              case TipoRecorrencia.personalizado:
-                break;
-              default:
-                _diasSelecionados.clear();
-                break;
-            }
+            _configuracaoRecorrencia =
+                tipo == TipoRecorrencia.personalizado ? config : null;
+
+            _diasSelecionados = _diasRealizacaoParaSalvar(
+              tipo: tipo,
+              config: config,
+            );
           });
         },
       ),
@@ -224,26 +366,50 @@ class _EditarTarefaScreenState extends State<EditarTarefaScreen> {
       return;
     }
 
-    final erroHorario = TarefaValidator.validateIntervaloHorario(
-      _horarioInicio,
-      _horarioFim,
-    );
+    final inicio = _normalizarHorario(_horarioInicio);
+    final fim = _normalizarHorario(_horarioFim);
+
+    final erroHorario = TarefaValidator.validateIntervaloHorario(inicio, fim);
+
     if (erroHorario != null) {
       _mostrarErro(erroHorario);
       return;
     }
 
-    if (_tipoRecorrenciaSelecionado == TipoRecorrencia.personalizado) {
-      if (_diasSelecionados.isEmpty) {
-        _mostrarErro(
-          'Selecione pelo menos um dia da semana para recorrência personalizada.',
-        );
-        return;
-      }
+    final diasParaSalvar = _diasRealizacaoParaSalvar();
+
+    final erroDias = TarefaValidator.validateDias(
+      diasParaSalvar,
+      _tipoRecorrenciaSelecionado,
+    );
+
+    if (erroDias != null) {
+      _mostrarErro(erroDias);
+      return;
     }
 
-    if (_vincularMeta && _tagSelecionada == null) {
+    if (_tipoRecorrenciaSelecionado == TipoRecorrencia.personalizado &&
+        diasParaSalvar.isEmpty) {
+      _mostrarErro(
+        'Selecione pelo menos um dia da semana para recorrência personalizada.',
+      );
+      return;
+    }
+
+    if (!_vincularMeta) {
+      _mostrarErro(
+        'Toda tarefa precisa estar vinculada a uma meta. Ative o campo abaixo.',
+      );
+      return;
+    }
+
+    if (_tagSelecionada == null) {
       _mostrarErro('Selecione a categoria da meta.');
+      return;
+    }
+
+    if (_metaSelecionada == null) {
+      _mostrarErro('Por favor, selecione uma meta válida no campo.');
       return;
     }
 
@@ -258,46 +424,51 @@ class _EditarTarefaScreenState extends State<EditarTarefaScreen> {
     }
 
     try {
-      setState(() => _salvando = true);
+      setState(() {
+        _salvando = true;
+      });
 
       final tarefaAtualizada = TarefaDto(
         id: widget.tarefa.id,
         tituloTarefa: _tituloController.text.trim(),
-        diasRealizacao: _diasSelecionados,
-        horario: _horarioController.text.trim().isEmpty
-            ? null
-            : _horarioController.text.trim(),
-        horarioInicio: _horarioInicio,
-        horarioFim: _horarioFim,
+        diasRealizacao: diasParaSalvar,
+        horario: inicio,
+        horarioInicio: inicio,
+        horarioFim: fim,
         dataInicial: _dataInicial,
-        metaId: _vincularMeta ? _metaSelecionada?.id : null,
-        tituloMeta: _vincularMeta ? _metaSelecionada?.tituloMeta : null,
-        tag: _vincularMeta ? _tagSelecionada : null,
+        metaId: _metaSelecionada!.id,
+        tituloMeta: _metaSelecionada!.tituloMeta,
+        tag: _tagSelecionada,
         status: widget.tarefa.status,
         userId: widget.tarefa.userId,
         dataCriacao: widget.tarefa.dataCriacao,
         dataConclusao: widget.tarefa.dataConclusao,
         tipoRecorrencia: _tipoRecorrenciaSelecionado,
-        configuracaoRecorrencia: _configuracaoRecorrencia,
+        configuracaoRecorrencia: _configuracaoParaSalvar(diasParaSalvar),
       );
 
       await _tarefasRepository.atualizarTarefa(tarefaAtualizada);
 
       if (!mounted) return;
+
       Navigator.pop(context);
     } catch (e) {
       _mostrarErro('Erro ao atualizar: ${e.toString()}');
     } finally {
       if (mounted) {
-        setState(() => _salvando = false);
+        setState(() {
+          _salvando = false;
+        });
       }
     }
   }
 
   void _mostrarErro(String mensagem) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(mensagem)));
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(content: Text(mensagem)),
+      );
   }
 
   @override
@@ -323,7 +494,10 @@ class _EditarTarefaScreenState extends State<EditarTarefaScreen> {
         ),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1),
-          child: Container(color: colors.azulAlba.withOpacity(0.2), height: 1),
+          child: Container(
+            color: colors.azulAlba.withOpacity(0.2),
+            height: 1,
+          ),
         ),
       ),
       body: SingleChildScrollView(
@@ -342,27 +516,37 @@ class _EditarTarefaScreenState extends State<EditarTarefaScreen> {
                     TarefaValidator.validateTitulo(value ?? ''),
                 colors: colors,
               ),
+
               const SizedBox(height: 28),
+
               _buildSectionLabel('Data inicial', colors),
               _buildDataSelector(colors),
+
               const SizedBox(height: 28),
+
               _buildSectionLabel('Frequência', colors),
               _buildFrequenciaSelector(colors),
+
               const SizedBox(height: 28),
+
               if (_tipoRecorrenciaSelecionado ==
-                  TipoRecorrencia.personalizado) ...<Widget>[
+                  TipoRecorrencia.personalizado) ...[
                 _buildSectionLabel('Dias de realização', colors),
                 const SizedBox(height: 12),
                 _buildDiasSelector(colors),
                 const SizedBox(height: 28),
               ],
-              _buildSectionLabel('Horário (opcional)', colors),
-              _buildHorarioSelector(colors),
-              const SizedBox(height: 28),
-              _buildHorarioRange(colors),
+
+              _buildSectionLabel('Horário', colors),
+              const SizedBox(height: 12),
+              _buildHorarioRange(),
+
               const SizedBox(height: 32),
+
               _buildMetaSection(colors),
+
               const SizedBox(height: 48),
+
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
@@ -432,12 +616,20 @@ class _EditarTarefaScreenState extends State<EditarTarefaScreen> {
                   setState(() {
                     _dataInicialController.clear();
                     _dataInicial = null;
+
+                    if (_tipoRecorrenciaSelecionado ==
+                        TipoRecorrencia.semanal) {
+                      _diasSelecionados = [];
+                    }
                   });
                 },
                 child: const Icon(Icons.close, size: 20),
               )
             else
-              Icon(Icons.keyboard_arrow_down, color: Colors.grey.shade600),
+              Icon(
+                Icons.keyboard_arrow_down,
+                color: Colors.grey.shade600,
+              ),
           ],
         ),
       ),
@@ -466,14 +658,17 @@ class _EditarTarefaScreenState extends State<EditarTarefaScreen> {
               Expanded(
                 child: Text(
                   _tipoRecorrenciaSelecionado.label,
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 16,
                     color: Colors.black87,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
-              Icon(Icons.keyboard_arrow_down, color: Colors.grey.shade600),
+              Icon(
+                Icons.keyboard_arrow_down,
+                color: Colors.grey.shade600,
+              ),
             ],
           ),
         ),
@@ -481,7 +676,7 @@ class _EditarTarefaScreenState extends State<EditarTarefaScreen> {
     );
   }
 
-  Widget _buildHorarioRange(AppColors colors) {
+  Widget _buildHorarioRange() {
     return HorarioWidget(
       horarioInicio: _horarioInicio,
       horarioFim: _horarioFim,
@@ -526,63 +721,15 @@ class _EditarTarefaScreenState extends State<EditarTarefaScreen> {
         validator: validator,
         decoration: InputDecoration(
           hintText: hint,
-          prefixIcon: Icon(icon, color: colors.azulAlba.withOpacity(0.6)),
+          prefixIcon: Icon(
+            icon,
+            color: colors.azulAlba.withOpacity(0.6),
+          ),
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(
             vertical: 15,
             horizontal: 10,
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildHorarioSelector(AppColors colors) {
-    final horario = _horarioController.text.trim();
-
-    return GestureDetector(
-      onTap: _selecionarHorario,
-      child: Container(
-        margin: const EdgeInsets.only(top: 12),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
-        decoration: BoxDecoration(
-          color: Colors.grey.shade50,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey.shade200),
-        ),
-        child: Row(
-          children: [
-            Icon(
-              Icons.access_time_rounded,
-              color: colors.azulAlba.withOpacity(0.6),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                horario.isEmpty ? 'Selecionar horário' : horario,
-                style: TextStyle(
-                  fontSize: 16,
-                  color: horario.isEmpty
-                      ? Colors.grey.shade500
-                      : Colors.black87,
-                  fontWeight: horario.isEmpty
-                      ? FontWeight.normal
-                      : FontWeight.w600,
-                ),
-              ),
-            ),
-            if (horario.isNotEmpty)
-              GestureDetector(
-                onTap: () {
-                  setState(() {
-                    _horarioController.clear();
-                  });
-                },
-                child: const Icon(Icons.close, size: 20),
-              )
-            else
-              Icon(Icons.keyboard_arrow_down, color: Colors.grey.shade600),
-          ],
         ),
       ),
     );
@@ -600,9 +747,18 @@ class _EditarTarefaScreenState extends State<EditarTarefaScreen> {
           selected: selecionado,
           onSelected: (value) {
             setState(() {
-              value
-                  ? _diasSelecionados.add(dia)
-                  : _diasSelecionados.remove(dia);
+              if (value) {
+                if (!_diasSelecionados.contains(dia)) {
+                  _diasSelecionados.add(dia);
+                }
+              } else {
+                _diasSelecionados.remove(dia);
+              }
+
+              _configuracaoRecorrencia = ConfiguracaoRecorrencia(
+                diasSemana: List<String>.from(_diasSelecionados),
+                intervaloEmDias: _configuracaoRecorrencia?.intervaloEmDias,
+              );
             });
           },
           selectedColor: colors.neonGreen,
@@ -611,7 +767,9 @@ class _EditarTarefaScreenState extends State<EditarTarefaScreen> {
             color: selecionado ? colors.azulAlba : Colors.grey.shade600,
             fontWeight: FontWeight.bold,
           ),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
           side: BorderSide(
             color: selecionado ? colors.neonGreen : Colors.grey.shade300,
           ),
@@ -626,7 +784,9 @@ class _EditarTarefaScreenState extends State<EditarTarefaScreen> {
       decoration: BoxDecoration(
         color: Colors.grey.shade50,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: colors.azulAlba.withOpacity(0.1)),
+        border: Border.all(
+          color: colors.azulAlba.withOpacity(0.1),
+        ),
       ),
       child: Column(
         children: [
@@ -637,13 +797,16 @@ class _EditarTarefaScreenState extends State<EditarTarefaScreen> {
               Switch(
                 value: _vincularMeta,
                 activeColor: colors.neonGreen,
-                onChanged: (v) => setState(() {
-                  _vincularMeta = v;
-                  if (!v) {
-                    _tagSelecionada = null;
-                    _metaSelecionada = null;
-                  }
-                }),
+                onChanged: (value) {
+                  setState(() {
+                    _vincularMeta = value;
+
+                    if (!value) {
+                      _tagSelecionada = null;
+                      _metaSelecionada = null;
+                    }
+                  });
+                },
               ),
             ],
           ),
@@ -670,7 +833,7 @@ class _EditarTarefaScreenState extends State<EditarTarefaScreen> {
               const SizedBox(height: 15),
               if (_metasFiltradas.isEmpty)
                 Padding(
-                  padding: const EdgeInsets.only(top: 8.0),
+                  padding: const EdgeInsets.only(top: 8),
                   child: Text(
                     'Nenhuma meta encontrada para esta categoria.',
                     style: TextStyle(color: colors.greyThree),
@@ -682,13 +845,17 @@ class _EditarTarefaScreenState extends State<EditarTarefaScreen> {
                   hint: const Text('Selecione a meta'),
                   items: _metasFiltradas
                       .map(
-                        (m) => DropdownMenuItem(
-                          value: m,
-                          child: Text(m.tituloMeta),
+                        (meta) => DropdownMenuItem<MetaDto>(
+                          value: meta,
+                          child: Text(meta.tituloMeta),
                         ),
                       )
                       .toList(),
-                  onChanged: (v) => setState(() => _metaSelecionada = v),
+                  onChanged: (meta) {
+                    setState(() {
+                      _metaSelecionada = meta;
+                    });
+                  },
                   decoration: InputDecoration(
                     filled: true,
                     fillColor: Colors.white,
@@ -709,10 +876,12 @@ class _EditarTarefaScreenState extends State<EditarTarefaScreen> {
 
     return Expanded(
       child: GestureDetector(
-        onTap: () => setState(() {
-          _tagSelecionada = tag;
-          _metaSelecionada = null;
-        }),
+        onTap: () {
+          setState(() {
+            _tagSelecionada = tag;
+            _metaSelecionada = null;
+          });
+        },
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
