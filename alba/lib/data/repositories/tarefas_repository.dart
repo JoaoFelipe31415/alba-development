@@ -104,7 +104,8 @@ class TarefasRepository {
 
         final tarefaRecorrente = TarefaDto(
           tituloTarefa: tarefaOriginal.tituloTarefa,
-          diasRealizacao: tarefaOriginal.diasRealizacao,
+          diasRealizacao:
+              [], // 🔧 BUG FIX: Tarefas recorrentes "naoRepete" não devem ter dias
           horario: tarefaOriginal.horario,
           horarioInicio: tarefaOriginal.horarioInicio,
           horarioFim: tarefaOriginal.horarioFim,
@@ -121,7 +122,7 @@ class TarefasRepository {
 
         final dadosMap = tarefaRecorrente.toMap();
         dadosMap['id'] = docRef.id;
-        dadosMap['tipoRecorrencia'] = 'não repete';
+        dadosMap['tipoRecorrencia'] = 'naoRepete';
 
         batch.set(docRef, dadosMap);
       }

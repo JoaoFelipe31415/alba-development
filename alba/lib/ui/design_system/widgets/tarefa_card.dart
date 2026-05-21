@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:alba/domain/dto/tarefa_dto.dart';
+import 'package:alba/domain/entities/recorrencia.dart';
 import 'package:alba/ui/design_system/theme/app_colors.dart';
 
 class TarefaCard extends StatelessWidget {
@@ -40,6 +41,22 @@ class TarefaCard extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  // 🔧 BUG FIX: Determina se deve mostrar seletores de dias baseado no tipo
+  bool _shouldShowDias() {
+    // Mostrar dias apenas para tipos que os usam
+    switch (tarefa.tipoRecorrencia) {
+      case TipoRecorrencia.diaria:
+      case TipoRecorrencia.segAVinco:
+      case TipoRecorrencia.personalizado:
+        return true;
+      case TipoRecorrencia.naoRepete:
+      case TipoRecorrencia.semanal:
+      case TipoRecorrencia.mensal:
+      case TipoRecorrencia.anual:
+        return false;
+    }
   }
 
   @override
@@ -87,8 +104,10 @@ class TarefaCard extends StatelessWidget {
               if (tarefa.tag != null && tarefa.tag!.isNotEmpty)
                 Container(
                   margin: const EdgeInsets.only(right: 8),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: _tagColor(tarefa.tag, appColors).withOpacity(0.15),
                     borderRadius: BorderRadius.circular(12),
@@ -111,24 +130,30 @@ class TarefaCard extends StatelessWidget {
               IconButton(
                 constraints: const BoxConstraints(),
                 padding: const EdgeInsets.all(4),
-                icon: Icon(Icons.delete, color: appColors.successColor, size: 20),
+                icon: Icon(
+                  Icons.delete,
+                  color: appColors.successColor,
+                  size: 20,
+                ),
                 onPressed: onDelete,
               ),
             ],
           ),
           const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _buildDia('S', 'segunda', appColors),
-              _buildDia('T', 'terca', appColors),
-              _buildDia('Q', 'quarta', appColors),
-              _buildDia('Q', 'quinta', appColors),
-              _buildDia('S', 'sexta', appColors),
-              _buildDia('S', 'sabado', appColors),
-              _buildDia('D', 'domingo', appColors),
-            ],
-          ),
+          // 🔧 BUG FIX: Só mostrar dias se a recorrência requer (não mostrar para "naoRepete", "mensal", "semanal", "anual")
+          if (_shouldShowDias())
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                _buildDia('S', 'segunda', appColors),
+                _buildDia('T', 'terca', appColors),
+                _buildDia('Q', 'quarta', appColors),
+                _buildDia('Q', 'quinta', appColors),
+                _buildDia('S', 'sexta', appColors),
+                _buildDia('S', 'sabado', appColors),
+                _buildDia('D', 'domingo', appColors),
+              ],
+            ),
         ],
       ),
     );

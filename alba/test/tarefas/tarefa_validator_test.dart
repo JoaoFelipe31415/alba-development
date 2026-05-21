@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:alba/domain/validators/tarefa_validator.dart';
+import 'package:alba/domain/entities/recorrencia.dart';
 
 void main() {
   group('TarefaValidator - Título', () {
@@ -25,18 +26,39 @@ void main() {
   });
 
   group('TarefaValidator - Dias', () {
-    test('deve retornar erro se lista vazia', () {
-      final result = TarefaValidator.validateDias([]);
-      expect(result, 'Selecione pelo menos um dia da semana.');
+    // 🔧 BUG FIX: Testes atualizados para usar o segundo parâmetro tipoRecorrencia
+    test('deve retornar erro se lista vazia em recorrência personalizada', () {
+      final result = TarefaValidator.validateDias(
+        [],
+        TipoRecorrencia.personalizado,
+      );
+      expect(
+        result,
+        'Selecione pelo menos um dia da semana para a recorrência.',
+      );
+    });
+
+    test('deve permitir lista vazia para recorrência não-personalizada', () {
+      final result = TarefaValidator.validateDias(
+        [],
+        TipoRecorrencia.naoRepete,
+      );
+      expect(result, null);
     });
 
     test('deve retornar erro se dia inválido', () {
-      final result = TarefaValidator.validateDias(['segunda', 'feriado']);
+      final result = TarefaValidator.validateDias([
+        'segunda',
+        'feriado',
+      ], TipoRecorrencia.personalizado);
       expect(result, 'Selecione apenas dias válidos da semana.');
     });
 
     test('deve aceitar dias válidos', () {
-      final result = TarefaValidator.validateDias(['segunda', 'quarta']);
+      final result = TarefaValidator.validateDias([
+        'segunda',
+        'quarta',
+      ], TipoRecorrencia.personalizado);
       expect(result, null);
     });
   });

@@ -1,5 +1,6 @@
 import 'package:alba/data/repositories/tarefas_repository.dart';
 import 'package:alba/domain/dto/tarefa_dto.dart';
+import 'package:alba/domain/entities/recorrencia.dart';
 import 'package:alba/ui/tarefas/criar_tarefa_screen.dart';
 import 'package:alba/ui/tarefas/editar_tarefa_screen.dart';
 import 'package:alba/ui/design_system/theme/app_colors.dart';
@@ -354,6 +355,22 @@ class _GerenciamentoTarefasScreenState
     );
   }
 
+  // 🔧 BUG FIX: Determina se deve mostrar seletores de dias baseado no tipo
+  bool _shouldShowDias(TipoRecorrencia tipoRecorrencia) {
+    // Mostrar dias apenas para tipos que os usam
+    switch (tipoRecorrencia) {
+      case TipoRecorrencia.diaria:
+      case TipoRecorrencia.segAVinco:
+      case TipoRecorrencia.personalizado:
+        return true;
+      case TipoRecorrencia.naoRepete:
+      case TipoRecorrencia.semanal:
+      case TipoRecorrencia.mensal:
+      case TipoRecorrencia.anual:
+        return false;
+    }
+  }
+
   Widget _buildHojeCard(TarefaDto tarefa, AppColors colors) {
     final concluida = _estaConcluidaLocal(tarefa);
 
@@ -441,18 +458,20 @@ class _GerenciamentoTarefasScreenState
               ),
             ),
           const SizedBox(height: 14),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _buildDiaBolinha('S', 'segunda', tarefa, colors),
-              _buildDiaBolinha('T', 'terca', tarefa, colors),
-              _buildDiaBolinha('Q', 'quarta', tarefa, colors),
-              _buildDiaBolinha('Q', 'quinta', tarefa, colors),
-              _buildDiaBolinha('S', 'sexta', tarefa, colors),
-              _buildDiaBolinha('S', 'sabado', tarefa, colors),
-              _buildDiaBolinha('D', 'domingo', tarefa, colors),
-            ],
-          ),
+          // 🔧 BUG FIX: Só mostrar dias para tipos de recorrência que os utilizam
+          if (_shouldShowDias(tarefa.tipoRecorrencia))
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                _buildDiaBolinha('S', 'segunda', tarefa, colors),
+                _buildDiaBolinha('T', 'terca', tarefa, colors),
+                _buildDiaBolinha('Q', 'quarta', tarefa, colors),
+                _buildDiaBolinha('Q', 'quinta', tarefa, colors),
+                _buildDiaBolinha('S', 'sexta', tarefa, colors),
+                _buildDiaBolinha('S', 'sabado', tarefa, colors),
+                _buildDiaBolinha('D', 'domingo', tarefa, colors),
+              ],
+            ),
         ],
       ),
     );
