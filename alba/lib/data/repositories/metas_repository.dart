@@ -88,17 +88,27 @@ class MetasRepository {
 
   Future<void> excluirMeta(String id) async {
     try {
+      // 1. Deleta o documento da meta
       await _firestore.collection('Metas').doc(id).delete();
 
+      // 2. Busca as tarefas vinculadas a esta meta para desvincular
+      // Importante: 'Tarefas' com 'T' maiúsculo e filtrar por 'userId' para permissões
       final tarefas = await _firestore
-          .collection('tarefas')
+          .collection('Tarefas')
+          .where('userId', isEqualTo: _userId)
           .where('metaId', isEqualTo: id)
           .get();
 
-      for (var tarefa in tarefas.docs) {
-        await tarefa.reference.update({'metaId': null});
+      // 3. Usa batch para atualizar todas as tarefas de uma vez
+      if (tarefas.docs.isNotEmpty) {
+        final batch = _firestore.batch();
+        for (var tarefa in tarefas.docs) {
+          batch.update(tarefa.reference, {'metaId': null});
+        }
+        await batch.commit();
       }
     } catch (e) {
+      print('Erro ao excluir meta: $e');
       throw Exception('Não foi possível excluir a meta. Tente novamente.');
     }
   }
