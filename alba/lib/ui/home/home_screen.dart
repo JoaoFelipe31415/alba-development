@@ -8,6 +8,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+const Color _albaCircleColor = Color(0xFF7FE2E1);
+const Color _unselectedNavColor = Color(0xFFB3CCFF);
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -23,9 +26,13 @@ class _HomeScreenState extends State<HomeScreen> {
       create: (context) => ProgressViewModel(),
       child: const ProgressScreen(),
     ), // Progresso
+
     const GeraciamentoMetasScreen(), // Metas
+
     const SizedBox(), // ALBA
+
     const GerenciamentoTarefasScreen(), // Tarefas
+
     const _ProximamentScreen(), // Menu
   ];
 
@@ -69,9 +76,39 @@ class _HomeScreenState extends State<HomeScreen> {
           });
         },
         backgroundColor: context.colors.azulAlba,
-        selectedItemColor: context.colors.whiteColor,
-        unselectedItemColor: const Color(0xFFB3CCFF),
+
+        // Cor do item selecionado: mesma cor do círculo da ALBA
+        selectedItemColor: _albaCircleColor,
+
+        // Cor dos itens não selecionados
+        unselectedItemColor: _unselectedNavColor,
+
         type: BottomNavigationBarType.fixed,
+
+        selectedIconTheme: const IconThemeData(
+          color: _albaCircleColor,
+          size: 30,
+        ),
+        unselectedIconTheme: const IconThemeData(
+          color: _unselectedNavColor,
+          size: 26,
+        ),
+
+        selectedLabelStyle: const TextStyle(
+          color: _albaCircleColor,
+          fontSize: 15,
+          fontWeight: FontWeight.w700,
+        ),
+        unselectedLabelStyle: const TextStyle(
+          color: _unselectedNavColor,
+          fontSize: 13,
+          fontWeight: FontWeight.w500,
+        ),
+
+        showSelectedLabels: true,
+        showUnselectedLabels: true,
+        enableFeedback: true,
+
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.bar_chart),
@@ -90,10 +127,7 @@ class _HomeScreenState extends State<HomeScreen> {
             icon: Icon(Icons.check_circle),
             label: 'Tarefas',
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.menu),
-            label: 'Menu',
-          ),
+          BottomNavigationBarItem(icon: Icon(Icons.menu), label: 'Menu'),
         ],
       ),
     );
@@ -131,7 +165,7 @@ class _AlbaNavButtonState extends State<_AlbaNavButton> {
             height: 62,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: const Color(0xFF7FE2E1),
+              color: _albaCircleColor,
               boxShadow: [
                 BoxShadow(
                   color: const Color(0x33000000),
@@ -182,9 +216,7 @@ class _ProximamentScreen extends StatelessWidget {
           const SizedBox(height: 8),
           const Text(
             'Esta funcionalidade em breve estará disponível',
-            style: TextStyle(
-              color: Color(0xFF888888),
-            ),
+            style: TextStyle(color: Color(0xFF888888)),
           ),
         ],
       ),
