@@ -85,10 +85,27 @@ class ProgressScreen extends StatelessWidget {
             ),
           ],
         ),
-        const CircleAvatar(
-          radius: 24,
-          backgroundColor: Colors.lightBlueAccent,
-          child: Icon(Icons.radar, color: Colors.white, size: 28),
+        Container(
+          width: 64,
+          height: 64,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.08),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          padding: const EdgeInsets.all(5),
+          child: ClipOval(
+            child: Image.asset(
+              'assets/images/imagem_alba_progresso.png',
+              fit: BoxFit.cover,
+            ),
+          ),
         ),
       ],
     );
