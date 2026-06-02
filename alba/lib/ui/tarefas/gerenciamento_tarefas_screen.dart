@@ -61,11 +61,7 @@ class _GerenciamentoTarefasScreenState
   DateTime _apenasData(DateTime data) {
     final local = data.toLocal();
 
-    return DateTime(
-      local.year,
-      local.month,
-      local.day,
-    );
+    return DateTime(local.year, local.month, local.day);
   }
 
   bool _mesmoDia(DateTime a, DateTime b) {
@@ -257,9 +253,7 @@ class _GerenciamentoTarefasScreenState
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Erro ao atualizar no banco de dados.'),
-        ),
+        const SnackBar(content: Text('Erro ao atualizar no banco de dados.')),
       );
     }
   }
@@ -313,11 +307,7 @@ class _GerenciamentoTarefasScreenState
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            e.toString().replaceFirst('Exception: ', ''),
-          ),
-        ),
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
       );
     }
   }
@@ -327,9 +317,7 @@ class _GerenciamentoTarefasScreenState
       context: context,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(20),
-        ),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (context) {
         final appColors = Theme.of(context).extension<AppColors>()!;
@@ -339,10 +327,7 @@ class _GerenciamentoTarefasScreenState
             children: [
               Center(
                 child: Container(
-                  margin: const EdgeInsets.only(
-                    top: 10,
-                    bottom: 5,
-                  ),
+                  margin: const EdgeInsets.only(top: 10, bottom: 5),
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
@@ -352,10 +337,7 @@ class _GerenciamentoTarefasScreenState
                 ),
               ),
               ListTile(
-                leading: Icon(
-                  Icons.edit,
-                  color: appColors.azulAlba,
-                ),
+                leading: Icon(Icons.edit, color: appColors.azulAlba),
                 title: const Text(
                   'Editar',
                   style: TextStyle(fontWeight: FontWeight.w500),
@@ -372,10 +354,7 @@ class _GerenciamentoTarefasScreenState
                 },
               ),
               ListTile(
-                leading: Icon(
-                  Icons.delete,
-                  color: appColors.primaryColor,
-                ),
+                leading: Icon(Icons.delete, color: appColors.primaryColor),
                 title: const Text(
                   'Excluir',
                   style: TextStyle(fontWeight: FontWeight.w500),
@@ -495,6 +474,21 @@ class _GerenciamentoTarefasScreenState
     }
   }
 
+  String? _tituloMetaValido(TarefaDto tarefa) {
+    final tituloMeta = tarefa.tituloMeta?.trim();
+    final tituloTarefa = tarefa.tituloTarefa.trim();
+
+    if (tituloMeta == null || tituloMeta.isEmpty) {
+      return null;
+    }
+
+    if (tituloMeta.toLowerCase() == tituloTarefa.toLowerCase()) {
+      return null;
+    }
+
+    return tituloMeta;
+  }
+
   Widget _buildDiaBolinha(
     String letra,
     String dia,
@@ -510,10 +504,7 @@ class _GerenciamentoTarefasScreenState
       decoration: BoxDecoration(
         color: selecionado ? colors.neonGreen : colors.whiteColor,
         shape: BoxShape.circle,
-        border: Border.all(
-          color: colors.neonGreen,
-          width: 2,
-        ),
+        border: Border.all(color: colors.neonGreen, width: 2),
       ),
       child: Text(
         letra,
@@ -529,6 +520,7 @@ class _GerenciamentoTarefasScreenState
     final concluida = _estaConcluidaLocal(tarefa);
     final horario = _formatarHorario(tarefa);
     final recorrencia = _formatarRecorrencia(tarefa);
+    final tituloMeta = _tituloMetaValido(tarefa);
 
     return Container(
       decoration: BoxDecoration(
@@ -555,17 +547,10 @@ class _GerenciamentoTarefasScreenState
                   height: 28,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    border: Border.all(
-                      color: colors.neonGreen,
-                      width: 2,
-                    ),
+                    border: Border.all(color: colors.neonGreen, width: 2),
                   ),
                   child: concluida
-                      ? Icon(
-                          Icons.check,
-                          color: colors.neonGreen,
-                          size: 18,
-                        )
+                      ? Icon(Icons.check, color: colors.neonGreen, size: 18)
                       : null,
                 ),
               ),
@@ -585,10 +570,7 @@ class _GerenciamentoTarefasScreenState
                 ),
               ),
               IconButton(
-                icon: Icon(
-                  Icons.edit,
-                  color: colors.neonGreen,
-                ),
+                icon: Icon(Icons.edit, color: colors.neonGreen),
                 onPressed: () async {
                   await Navigator.push(
                     context,
@@ -599,10 +581,7 @@ class _GerenciamentoTarefasScreenState
                 },
               ),
               IconButton(
-                icon: Icon(
-                  Icons.delete,
-                  color: colors.neonGreen,
-                ),
+                icon: Icon(Icons.delete, color: colors.neonGreen),
                 onPressed: () => _confirmarExclusao(tarefa),
               ),
             ],
@@ -649,10 +628,10 @@ class _GerenciamentoTarefasScreenState
               ),
             ],
           ),
-          if (tarefa.tituloMeta != null && tarefa.tituloMeta!.isNotEmpty) ...[
+          if (tituloMeta != null) ...[
             const SizedBox(height: 10),
             Text(
-              'Meta: ${tarefa.tituloMeta}',
+              'Meta: $tituloMeta',
               style: TextStyle(
                 color: colors.whiteColor.withOpacity(0.85),
                 fontSize: 12,
@@ -687,10 +666,7 @@ class _GerenciamentoTarefasScreenState
     required Color textColor,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 10,
-        vertical: 5,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
         color: backgroundColor,
         borderRadius: BorderRadius.circular(999),
@@ -698,11 +674,7 @@ class _GerenciamentoTarefasScreenState
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            icon,
-            size: 14,
-            color: textColor,
-          ),
+          Icon(icon, size: 14, color: textColor),
           const SizedBox(width: 4),
           Text(
             label,
@@ -728,10 +700,7 @@ class _GerenciamentoTarefasScreenState
 
   Widget _buildSemConexaoOuVazio(String texto, AppColors colors) {
     return Center(
-      child: Text(
-        texto,
-        style: TextStyle(color: colors.greyFive),
-      ),
+      child: Text(texto, style: TextStyle(color: colors.greyFive)),
     );
   }
 
@@ -745,11 +714,7 @@ class _GerenciamentoTarefasScreenState
         backgroundColor: colors.whiteColor,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(
-            Icons.arrow_back_ios,
-            color: colors.azulAlba,
-            size: 20,
-          ),
+          icon: Icon(Icons.arrow_back_ios, color: colors.azulAlba, size: 20),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
@@ -766,15 +731,10 @@ class _GerenciamentoTarefasScreenState
         onPressed: () async {
           await Navigator.push(
             context,
-            MaterialPageRoute(
-              builder: (_) => const CriarTarefaScreen(),
-            ),
+            MaterialPageRoute(builder: (_) => const CriarTarefaScreen()),
           );
         },
-        child: Icon(
-          Icons.add,
-          color: colors.whiteColor,
-        ),
+        child: Icon(Icons.add, color: colors.whiteColor),
       ),
       body: StreamBuilder<List<TarefaDto>>(
         stream: _tarefasRepository.buscarTarefasStream(
@@ -785,9 +745,7 @@ class _GerenciamentoTarefasScreenState
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting &&
               !snapshot.hasData) {
-            return const Center(
-              child: CircularProgressIndicator(),
-            );
+            return const Center(child: CircularProgressIndicator());
           }
 
           if (snapshot.hasError) {
@@ -885,9 +843,7 @@ class _GerenciamentoTarefasScreenState
                   const SizedBox(height: 14),
                   SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: _gerarCardsCalendario(colors),
-                    ),
+                    child: Row(children: _gerarCardsCalendario(colors)),
                   ),
                   const SizedBox(height: 32),
                   Text(
@@ -911,10 +867,7 @@ class _GerenciamentoTarefasScreenState
                       itemCount: tarefasDoDia.length,
                       separatorBuilder: (_, __) => const SizedBox(height: 14),
                       itemBuilder: (context, index) {
-                        return _buildHojeCard(
-                          tarefasDoDia[index],
-                          colors,
-                        );
+                        return _buildHojeCard(tarefasDoDia[index], colors);
                       },
                     ),
                   const SizedBox(height: 40),
@@ -934,20 +887,14 @@ class _GerenciamentoTarefasScreenState
                   ),
                   const SizedBox(height: 20),
                   if (tarefasDoMes.isEmpty)
-                    _buildSemConexaoOuVazio(
-                      "Nenhuma tarefa neste mês.",
-                      colors,
-                    )
+                    _buildSemConexaoOuVazio("Nenhuma tarefa neste mês.", colors)
                   else
                     ListView.builder(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
                       itemCount: tarefasDoMes.length,
                       itemBuilder: (context, index) {
-                        return _buildTimelineTask(
-                          tarefasDoMes[index],
-                          colors,
-                        );
+                        return _buildTimelineTask(tarefasDoMes[index], colors);
                       },
                     ),
                   const SizedBox(height: 40),
@@ -969,19 +916,11 @@ class _GerenciamentoTarefasScreenState
       },
       itemBuilder: (context) {
         return _meses
-            .map(
-              (mes) => PopupMenuItem(
-                value: mes,
-                child: Text(mes),
-              ),
-            )
+            .map((mes) => PopupMenuItem(value: mes, child: Text(mes)))
             .toList();
       },
       child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: 10,
-          vertical: 4,
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         decoration: BoxDecoration(
           color: colors.neonGreen,
           borderRadius: BorderRadius.circular(10),
@@ -990,16 +929,9 @@ class _GerenciamentoTarefasScreenState
           children: [
             Text(
               _mesSelecionado,
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 14,
-              ),
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
             ),
-            Icon(
-              Icons.keyboard_arrow_down,
-              size: 18,
-              color: colors.azulAlba,
-            ),
+            Icon(Icons.keyboard_arrow_down, size: 18, color: colors.azulAlba),
           ],
         ),
       ),
@@ -1009,19 +941,9 @@ class _GerenciamentoTarefasScreenState
   List<Widget> _gerarCardsCalendario(AppColors colors) {
     final cards = <Widget>[];
 
-    final base = DateTime.now().add(
-      Duration(days: _offsetDias),
-    );
+    final base = DateTime.now().add(Duration(days: _offsetDias));
 
-    final diasSemana = [
-      "Dom",
-      "Seg",
-      "Ter",
-      "Qua",
-      "Qui",
-      "Sex",
-      "Sab",
-    ];
+    final diasSemana = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sab"];
 
     for (int i = 0; i < 7; i++) {
       final dataCard = base.add(Duration(days: i));
@@ -1030,13 +952,7 @@ class _GerenciamentoTarefasScreenState
       final selecionado = _mesmoDia(_dataSelecionada, dataCard);
 
       cards.add(
-        _buildCardCalendario(
-          diaNome,
-          diaNum,
-          selecionado,
-          colors,
-          dataCard,
-        ),
+        _buildCardCalendario(diaNome, diaNum, selecionado, colors, dataCard),
       );
     }
 
@@ -1059,10 +975,7 @@ class _GerenciamentoTarefasScreenState
       },
       child: Container(
         margin: const EdgeInsets.only(right: 12),
-        padding: const EdgeInsets.symmetric(
-          horizontal: 14,
-          vertical: 10,
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
           color: selecionado ? colors.neonGreen : colors.whiteColor,
           borderRadius: BorderRadius.circular(15),
@@ -1099,6 +1012,7 @@ class _GerenciamentoTarefasScreenState
     final dataExibicao = tarefa.dataInicial ?? tarefa.dataCriacao;
     final horario = _formatarHorario(tarefa);
     final recorrencia = _formatarRecorrencia(tarefa);
+    final tituloMeta = _tituloMetaValido(tarefa);
 
     return IntrinsicHeight(
       child: Row(
@@ -1114,12 +1028,7 @@ class _GerenciamentoTarefasScreenState
                 ),
               ),
               const SizedBox(height: 4),
-              Expanded(
-                child: Container(
-                  width: 2,
-                  color: colors.greyThree,
-                ),
-              ),
+              Expanded(child: Container(width: 2, color: colors.greyThree)),
             ],
           ),
           const SizedBox(width: 16),
@@ -1145,10 +1054,7 @@ class _GerenciamentoTarefasScreenState
                     onChanged: (_) => _toggleStatusTarefa(tarefa),
                     shape: const CircleBorder(),
                     activeColor: colors.neonGreen,
-                    side: BorderSide(
-                      color: colors.azulAlba,
-                      width: 2,
-                    ),
+                    side: BorderSide(color: colors.azulAlba, width: 2),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
@@ -1166,14 +1072,16 @@ class _GerenciamentoTarefasScreenState
                                 : TextDecoration.none,
                           ),
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          "Meta: ${tarefa.tituloMeta ?? 'Sem Meta'}",
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: colors.azulAlba.withOpacity(0.7),
+                        if (tituloMeta != null) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            "Meta: $tituloMeta",
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: colors.azulAlba.withOpacity(0.7),
+                            ),
                           ),
-                        ),
+                        ],
                         const SizedBox(height: 6),
                         Wrap(
                           spacing: 6,
@@ -1183,15 +1091,17 @@ class _GerenciamentoTarefasScreenState
                               _buildInfoChip(
                                 icon: Icons.access_time_rounded,
                                 label: horario,
-                                backgroundColor:
-                                    colors.azulAlba.withOpacity(0.08),
+                                backgroundColor: colors.azulAlba.withOpacity(
+                                  0.08,
+                                ),
                                 textColor: colors.azulAlba,
                               ),
                             _buildInfoChip(
                               icon: Icons.repeat_rounded,
                               label: recorrencia,
-                              backgroundColor:
-                                  colors.azulAlba.withOpacity(0.08),
+                              backgroundColor: colors.azulAlba.withOpacity(
+                                0.08,
+                              ),
                               textColor: colors.azulAlba,
                             ),
                           ],
@@ -1200,10 +1110,7 @@ class _GerenciamentoTarefasScreenState
                     ),
                   ),
                   IconButton(
-                    icon: Icon(
-                      Icons.more_vert,
-                      color: colors.azulAlba,
-                    ),
+                    icon: Icon(Icons.more_vert, color: colors.azulAlba),
                     onPressed: () => _mostrarOpcoesTarefa(tarefa),
                   ),
                 ],
