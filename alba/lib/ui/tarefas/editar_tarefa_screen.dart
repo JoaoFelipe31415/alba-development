@@ -9,6 +9,8 @@ import 'package:alba/ui/design_system/theme/app_colors.dart';
 import 'package:alba/ui/design_system/widgets/horario_widget.dart';
 import 'package:flutter/material.dart';
 
+const Color albaLightBlue = Color(0xFF7FE2E1);
+
 class EditarTarefaScreen extends StatefulWidget {
   final TarefaDto tarefa;
 
@@ -88,9 +90,8 @@ class _EditarTarefaScreenState extends State<EditarTarefaScreen> {
     if (_tipoRecorrenciaSelecionado == TipoRecorrencia.personalizado &&
         diasConfig != null &&
         diasConfig.isNotEmpty) {
-      _diasSelecionados = diasConfig
-          .map((dia) => dia.toLowerCase().trim())
-          .toList();
+      _diasSelecionados =
+          diasConfig.map((dia) => dia.toLowerCase().trim()).toList();
     } else {
       _diasSelecionados = widget.tarefa.diasRealizacao
           .map((dia) => dia.toLowerCase().trim())
@@ -516,19 +517,13 @@ class _EditarTarefaScreenState extends State<EditarTarefaScreen> {
                     TarefaValidator.validateTitulo(value ?? ''),
                 colors: colors,
               ),
-
               const SizedBox(height: 28),
-
               _buildSectionLabel('Data inicial', colors),
               _buildDataSelector(colors),
-
               const SizedBox(height: 28),
-
               _buildSectionLabel('Frequência', colors),
               _buildFrequenciaSelector(colors),
-
               const SizedBox(height: 28),
-
               if (_tipoRecorrenciaSelecionado ==
                   TipoRecorrencia.personalizado) ...[
                 _buildSectionLabel('Dias de realização', colors),
@@ -536,17 +531,12 @@ class _EditarTarefaScreenState extends State<EditarTarefaScreen> {
                 _buildDiasSelector(colors),
                 const SizedBox(height: 28),
               ],
-
               _buildSectionLabel('Horário', colors),
               const SizedBox(height: 12),
               _buildHorarioRange(),
-
               const SizedBox(height: 32),
-
               _buildMetaSection(colors),
-
               const SizedBox(height: 48),
-
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
@@ -604,9 +594,8 @@ class _EditarTarefaScreenState extends State<EditarTarefaScreen> {
                 style: TextStyle(
                   fontSize: 16,
                   color: data.isEmpty ? Colors.grey.shade500 : Colors.black87,
-                  fontWeight: data.isEmpty
-                      ? FontWeight.normal
-                      : FontWeight.w600,
+                  fontWeight:
+                      data.isEmpty ? FontWeight.normal : FontWeight.w600,
                 ),
               ),
             ),
@@ -710,25 +699,67 @@ class _EditarTarefaScreenState extends State<EditarTarefaScreen> {
   }) {
     return Container(
       margin: const EdgeInsets.only(top: 12),
-      decoration: BoxDecoration(
-        color: Colors.grey.shade50,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
       child: TextFormField(
         controller: controller,
         keyboardType: keyboardType,
         validator: validator,
+        style: const TextStyle(
+          fontSize: 16,
+          color: Color(0xFF333333),
+          fontWeight: FontWeight.w500,
+        ),
         decoration: InputDecoration(
           hintText: hint,
+          hintStyle: TextStyle(
+            color: colors.greyFive,
+            fontSize: 16,
+            fontWeight: FontWeight.w400,
+          ),
           prefixIcon: Icon(
             icon,
-            color: colors.azulAlba.withOpacity(0.6),
+            color: colors.azulAlba.withOpacity(0.65),
+            size: 24,
           ),
-          border: InputBorder.none,
+          filled: true,
+          fillColor: Colors.grey.shade50,
           contentPadding: const EdgeInsets.symmetric(
-            vertical: 15,
-            horizontal: 10,
+            vertical: 17,
+            horizontal: 14,
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: BorderSide(
+              color: Colors.grey.shade300,
+              width: 1.3,
+            ),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: BorderSide(
+              color: Colors.grey.shade300,
+              width: 1.3,
+            ),
+          ),
+          focusedBorder: const OutlineInputBorder(
+            borderRadius: BorderRadius.all(Radius.circular(14)),
+            borderSide: BorderSide(
+              color: albaLightBlue,
+              width: 2,
+            ),
+          ),
+          errorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: BorderSide(
+              color: colors.errorColor,
+              width: 1.3,
+            ),
+          ),
+          focusedErrorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: BorderSide(
+              color: colors.errorColor,
+              width: 2,
+            ),
           ),
         ),
       ),

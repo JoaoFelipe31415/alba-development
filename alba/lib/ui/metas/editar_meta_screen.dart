@@ -2,6 +2,7 @@ import 'package:alba/config/dependencies.dart';
 import 'package:alba/data/repositories/metas_repository.dart';
 import 'package:alba/domain/dto/meta_dto.dart';
 import 'package:alba/domain/validators/meta_validator.dart';
+import 'package:alba/ui/design_system/theme/app_colors.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -36,14 +37,15 @@ class _EditarMetaScreenState extends State<EditarMetaScreen> {
   @override
   void initState() {
     super.initState();
+
     tituloController = TextEditingController(text: widget.meta.tituloMeta);
     descricaoController = TextEditingController(
       text: widget.meta.descricao ?? '',
     );
     prazoController = TextEditingController(
-      text:
-          '${widget.meta.prazo.day.toString().padLeft(2, '0')}/${widget.meta.prazo.month.toString().padLeft(2, '0')}/${widget.meta.prazo.year}',
+      text: MetaValidator.formatDate(widget.meta.prazo),
     );
+
     selectedTag = widget.meta.tag;
   }
 
@@ -56,34 +58,17 @@ class _EditarMetaScreenState extends State<EditarMetaScreen> {
   }
 
   void _validateAndSubmit() {
+    final titulo = tituloController.text;
+    final descricao = descricaoController.text;
+    final prazoTexto = prazoController.text;
+
     setState(() {
-      tituloError = MetaValidator.validateTitulo(tituloController.text);
+      tituloError = MetaValidator.validateTitulo(titulo);
       descricaoError = MetaValidator.validateDescricao(
-        descricaoController.text.isEmpty ? null : descricaoController.text,
+        descricao.trim().isEmpty ? null : descricao,
       );
+      prazoError = MetaValidator.validatePrazoTexto(prazoTexto);
       tagError = MetaValidator.validateTag(selectedTag);
-
-      try {
-        final textoData = prazoController.text;
-        if (textoData.length != 10 ||
-            textoData[2] != '/' ||
-            textoData[5] != '/') {
-          prazoError = 'Formato inválido. Use DD/MM/YYYY';
-        } else {
-          final dia = int.parse(textoData.substring(0, 2));
-          final mes = int.parse(textoData.substring(3, 5));
-          final ano = int.parse(textoData.substring(6, 10));
-
-          if (dia < 1 || dia > 31 || mes < 1 || mes > 12 || ano < 2024) {
-            prazoError = 'Data inválida';
-          } else {
-            final date = DateTime(ano, mes, dia);
-            prazoError = MetaValidator.validatePrazo(date);
-          }
-        }
-      } catch (e) {
-        prazoError = 'Informe uma data válida (DD/MM/YYYY)';
-      }
     });
 
     if (tituloError != null ||
@@ -91,9 +76,9 @@ class _EditarMetaScreenState extends State<EditarMetaScreen> {
         prazoError != null ||
         tagError != null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Preencha todos os campos obrigatórios.'),
-          backgroundColor: Color(0xFFFF0004),
+        SnackBar(
+          content: const Text('Revise os campos destacados.'),
+          backgroundColor: context.colors.errorColor,
         ),
       );
       return;
@@ -103,24 +88,33 @@ class _EditarMetaScreenState extends State<EditarMetaScreen> {
   }
 
   Future<void> _atualizarMeta() async {
+    final prazo = MetaValidator.parseDate(prazoController.text);
+
+    if (prazo == null) {
+      setState(() {
+        prazoError = MetaValidator.validatePrazoTexto(prazoController.text);
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Informe uma data válida.'),
+          backgroundColor: context.colors.errorColor,
+        ),
+      );
+      return;
+    }
+
     setState(() {
       isLoading = true;
     });
 
     try {
-      final textoData = prazoController.text;
-      final dia = int.parse(textoData.substring(0, 2));
-      final mes = int.parse(textoData.substring(3, 5));
-      final ano = int.parse(textoData.substring(6, 10));
-
-      final prazo = DateTime(ano, mes, dia);
-
       final metaAtualizada = MetaDto(
         id: widget.meta.id,
-        tituloMeta: tituloController.text,
-        descricao: descricaoController.text.isEmpty
+        tituloMeta: tituloController.text.trim(),
+        descricao: descricaoController.text.trim().isEmpty
             ? null
-            : descricaoController.text,
+            : descricaoController.text.trim(),
         prazo: prazo,
         tag: selectedTag,
         userId: auth.currentUser?.uid ?? '',
@@ -135,9 +129,9 @@ class _EditarMetaScreenState extends State<EditarMetaScreen> {
         });
 
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Meta atualizada com sucesso!'),
-            backgroundColor: Color(0xFF00C933),
+          SnackBar(
+            content: const Text('Meta atualizada com sucesso!'),
+            backgroundColor: context.colors.successColor,
           ),
         );
 
@@ -152,7 +146,7 @@ class _EditarMetaScreenState extends State<EditarMetaScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(e.toString()),
-            backgroundColor: const Color(0xFFFF0004),
+            backgroundColor: context.colors.errorColor,
           ),
         );
       }
@@ -161,254 +155,408 @@ class _EditarMetaScreenState extends State<EditarMetaScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
+
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: colors.whiteColor,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: colors.whiteColor,
         elevation: 0,
-        title: const Text(
+        centerTitle: true,
+        leading: IconButton(
+          icon: Icon(
+            Icons.arrow_back,
+            color: colors.azulAlba,
+            size: 30,
+          ),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Text(
           'Editar Meta',
           style: TextStyle(
-            color: Color(0xFF0052CC),
+            color: colors.azulAlba,
             fontWeight: FontWeight.bold,
-            fontSize: 24,
+            fontSize: 30,
           ),
-        ),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Color(0xFF0052CC)),
-          onPressed: () => Navigator.pop(context),
         ),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(2),
-          child: Container(color: const Color(0xFF0052CC), height: 2),
+          child: Container(
+            color: colors.azulAlba,
+            height: 2,
+          ),
         ),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+        padding: const EdgeInsets.fromLTRB(20, 28, 20, 40),
         child: Form(
           key: formKey,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Título da meta',
-                style: TextStyle(
-                  color: Color(0xFF0052CC),
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                ),
-              ),
+              _FieldLabel(text: 'Título da meta'),
               const SizedBox(height: 12),
-              TextField(
+              _TextInput(
                 controller: tituloController,
-                style: const TextStyle(color: Colors.black, fontSize: 14),
-                onChanged: (_) => setState(() => tituloError = null),
-                decoration: InputDecoration(
-                  hintText: 'Título...',
-                  hintStyle: const TextStyle(
-                    color: Color(0xFFB0B0B0),
-                    fontSize: 14,
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Color(0xFFCCCCCC)),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Color(0xFFCCCCCC)),
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    vertical: 16,
-                    horizontal: 16,
-                  ),
-                ),
+                hintText: 'Título...',
+                errorText: tituloError,
+                textInputAction: TextInputAction.next,
+                onChanged: (_) {
+                  if (tituloError != null) {
+                    setState(() => tituloError = null);
+                  }
+                },
               ),
-              if (tituloError != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Text(
-                    tituloError!,
-                    style: const TextStyle(
-                      color: Color(0xFFFF0004),
-                      fontSize: 12,
-                    ),
-                  ),
-                ),
               const SizedBox(height: 28),
-              const Text(
-                'Descrição',
-                style: TextStyle(
-                  color: Color(0xFF0052CC),
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                ),
-              ),
+
+              _FieldLabel(text: 'Descrição'),
               const SizedBox(height: 12),
-              TextField(
+              _TextInput(
                 controller: descricaoController,
-                style: const TextStyle(color: Colors.black, fontSize: 14),
+                hintText: 'Descrição...',
+                errorText: descricaoError,
                 maxLines: 4,
-                onChanged: (_) => setState(() => descricaoError = null),
-                decoration: InputDecoration(
-                  hintText: 'Descrição...',
-                  hintStyle: const TextStyle(
-                    color: Color(0xFFB0B0B0),
-                    fontSize: 14,
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Color(0xFFCCCCCC)),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Color(0xFFCCCCCC)),
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    vertical: 16,
-                    horizontal: 16,
-                  ),
-                ),
+                textInputAction: TextInputAction.newline,
+                onChanged: (_) {
+                  if (descricaoError != null) {
+                    setState(() => descricaoError = null);
+                  }
+                },
               ),
-              if (descricaoError != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Text(
-                    descricaoError!,
-                    style: const TextStyle(
-                      color: Color(0xFFFF0004),
-                      fontSize: 12,
-                    ),
-                  ),
-                ),
               const SizedBox(height: 28),
-              const Text(
-                'Prazo',
-                style: TextStyle(
-                  color: Color(0xFF0052CC),
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                ),
-              ),
+
+              _FieldLabel(text: 'Prazo'),
               const SizedBox(height: 12),
-              TextField(
+              _TextInput(
                 controller: prazoController,
-                style: const TextStyle(color: Colors.black, fontSize: 14),
+                hintText: 'DD/MM/AAAA',
+                errorText: prazoError,
                 keyboardType: TextInputType.number,
                 inputFormatters: [DateInputFormatter()],
-                decoration: InputDecoration(
-                  hintText: 'DD/MM/YYYY',
-                  hintStyle: const TextStyle(
-                    color: Color(0xFFB0B0B0),
-                    fontSize: 14,
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Color(0xFFCCCCCC)),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Color(0xFFCCCCCC)),
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    vertical: 16,
-                    horizontal: 16,
-                  ),
+                textInputAction: TextInputAction.next,
+                suffixIcon: Icon(
+                  Icons.calendar_today_rounded,
+                  color: colors.greyThree,
+                  size: 22,
                 ),
+                onChanged: (_) {
+                  if (prazoError != null) {
+                    setState(() => prazoError = null);
+                  }
+                },
               ),
-              if (prazoError != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Text(
-                    prazoError!,
-                    style: const TextStyle(
-                      color: Color(0xFFFF0004),
-                      fontSize: 12,
-                    ),
-                  ),
-                ),
               const SizedBox(height: 28),
-              const Text(
-                'TAG\'s',
-                style: TextStyle(
-                  color: Color(0xFF0052CC),
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                ),
-              ),
+
+              _FieldLabel(text: 'TAG\'s'),
               const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
+              _TagDropdown(
                 value: selectedTag,
-                style: const TextStyle(color: Colors.black, fontSize: 14),
-                dropdownColor: Colors.white,
-                onChanged: (value) => setState(() {
-                  selectedTag = value ?? 'negocio';
-                  tagError = null;
-                }),
-                items: const [
-                  DropdownMenuItem(value: 'negocio', child: Text('Negócio')),
-                  DropdownMenuItem(
-                    value: 'faculdade',
-                    child: Text('Faculdade'),
-                  ),
-                ],
-                decoration: InputDecoration(
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Color(0xFFCCCCCC)),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Color(0xFFCCCCCC)),
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    vertical: 16,
-                    horizontal: 16,
-                  ),
-                ),
+                errorText: tagError,
+                onChanged: (value) {
+                  setState(() {
+                    selectedTag = value ?? selectedTag;
+                    tagError = null;
+                  });
+                },
               ),
-              if (tagError != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Text(
-                    tagError!,
-                    style: const TextStyle(
-                      color: Color(0xFFFF0004),
-                      fontSize: 12,
-                    ),
-                  ),
-                ),
               const SizedBox(height: 48),
+
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: isLoading ? null : _validateAndSubmit,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF0052CC),
-                    padding: const EdgeInsets.symmetric(vertical: 18),
+                    backgroundColor: colors.azulAlba,
+                    disabledBackgroundColor: colors.azulAlba.withOpacity(0.55),
+                    elevation: 8,
+                    shadowColor: colors.azulAlba.withOpacity(0.25),
+                    padding: const EdgeInsets.symmetric(vertical: 20),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(32),
+                      borderRadius: BorderRadius.circular(36),
                     ),
                   ),
                   child: isLoading
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
+                      ? SizedBox(
+                          height: 22,
+                          width: 22,
                           child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation(Colors.white),
+                            strokeWidth: 2.4,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              colors.whiteColor,
+                            ),
                           ),
                         )
-                      : const Text(
+                      : Text(
                           'Salvar',
                           style: TextStyle(
-                            color: Colors.white,
+                            color: colors.whiteColor,
                             fontWeight: FontWeight.bold,
-                            fontSize: 18,
+                            fontSize: 20,
                           ),
                         ),
                 ),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _FieldLabel extends StatelessWidget {
+  final String text;
+
+  const _FieldLabel({
+    required this.text,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+
+    return Text(
+      text,
+      style: TextStyle(
+        color: colors.azulAlba,
+        fontWeight: FontWeight.bold,
+        fontSize: 20,
+      ),
+    );
+  }
+}
+
+class _TextInput extends StatelessWidget {
+  final TextEditingController controller;
+  final String hintText;
+  final String? errorText;
+  final int maxLines;
+  final TextInputType? keyboardType;
+  final List<TextInputFormatter>? inputFormatters;
+  final TextInputAction? textInputAction;
+  final Widget? suffixIcon;
+  final ValueChanged<String>? onChanged;
+
+  const _TextInput({
+    required this.controller,
+    required this.hintText,
+    required this.errorText,
+    this.maxLines = 1,
+    this.keyboardType,
+    this.inputFormatters,
+    this.textInputAction,
+    this.suffixIcon,
+    this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final hasError = errorText != null;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        TextField(
+          controller: controller,
+          maxLines: maxLines,
+          keyboardType: keyboardType,
+          inputFormatters: inputFormatters,
+          textInputAction: textInputAction,
+          style: TextStyle(
+            color: colors.blackColor.withOpacity(0.82),
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
+          ),
+          onChanged: onChanged,
+          decoration: InputDecoration(
+            hintText: hintText,
+            hintStyle: TextStyle(
+              color: colors.greyThree,
+              fontSize: 18,
+              fontWeight: FontWeight.w400,
+            ),
+            suffixIcon: suffixIcon,
+            filled: true,
+            fillColor: colors.whiteColor,
+            contentPadding: EdgeInsets.symmetric(
+              vertical: maxLines > 1 ? 20 : 18,
+              horizontal: 18,
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(18),
+              borderSide: BorderSide(
+                color: hasError ? colors.errorColor : colors.greyThree,
+                width: 1.4,
+              ),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(18),
+              borderSide: BorderSide(
+                color: hasError ? colors.errorColor : colors.greyThree,
+                width: 1.4,
+              ),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(18),
+              borderSide: BorderSide(
+                color: hasError ? colors.errorColor : colors.azulAlba,
+                width: 1.8,
+              ),
+            ),
+          ),
+        ),
+        if (hasError) ...[
+          const SizedBox(height: 8),
+          Text(
+            errorText!,
+            style: TextStyle(
+              color: colors.errorColor,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _TagDropdown extends StatelessWidget {
+  final String? value;
+  final String? errorText;
+  final ValueChanged<String?> onChanged;
+
+  const _TagDropdown({
+    required this.value,
+    required this.errorText,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final hasError = errorText != null;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        DropdownButtonFormField<String>(
+          value: value,
+          dropdownColor: colors.whiteColor,
+          icon: Icon(
+            Icons.keyboard_arrow_down_rounded,
+            color: colors.greyFive,
+            size: 30,
+          ),
+          style: TextStyle(
+            color: colors.blackColor.withOpacity(0.82),
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+          ),
+          decoration: InputDecoration(
+            filled: true,
+            fillColor: colors.whiteColor,
+            contentPadding: const EdgeInsets.symmetric(
+              vertical: 18,
+              horizontal: 18,
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(18),
+              borderSide: BorderSide(
+                color: hasError ? colors.errorColor : colors.greyThree,
+                width: 1.4,
+              ),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(18),
+              borderSide: BorderSide(
+                color: hasError ? colors.errorColor : colors.greyThree,
+                width: 1.4,
+              ),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(18),
+              borderSide: BorderSide(
+                color: hasError ? colors.errorColor : colors.azulAlba,
+                width: 1.8,
+              ),
+            ),
+          ),
+          hint: Text(
+            'Selecione uma tag',
+            style: TextStyle(
+              color: colors.greyThree,
+              fontSize: 18,
+              fontWeight: FontWeight.w400,
+            ),
+          ),
+          items: [
+            DropdownMenuItem(
+              value: 'negocio',
+              child: _TagOption(
+                label: 'Negócio',
+                backgroundColor: colors.neonGreen,
+                textColor: colors.azulAlba,
+              ),
+            ),
+            DropdownMenuItem(
+              value: 'faculdade',
+              child: _TagOption(
+                label: 'Faculdade',
+                backgroundColor: colors.primaryColor,
+                textColor: colors.whiteColor,
+              ),
+            ),
+          ],
+          onChanged: onChanged,
+        ),
+        if (hasError) ...[
+          const SizedBox(height: 8),
+          Text(
+            errorText!,
+            style: TextStyle(
+              color: colors.errorColor,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _TagOption extends StatelessWidget {
+  final String label;
+  final Color backgroundColor;
+  final Color textColor;
+
+  const _TagOption({
+    required this.label,
+    required this.backgroundColor,
+    required this.textColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: 10,
+          vertical: 6,
+        ),
+        decoration: BoxDecoration(
+          color: backgroundColor,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: textColor,
+            fontWeight: FontWeight.bold,
+            fontSize: 13,
           ),
         ),
       ),
@@ -429,10 +577,12 @@ class DateInputFormatter extends TextInputFormatter {
     }
 
     String formattedText = '';
+
     for (int i = 0; i < text.length; i++) {
       if (i == 2 || i == 4) {
         formattedText += '/';
       }
+
       formattedText += text[i];
     }
 
@@ -443,4 +593,9 @@ class DateInputFormatter extends TextInputFormatter {
       ),
     );
   }
+}
+
+extension on BuildContext {
+  AppColors get colors =>
+      Theme.of(this).extension<AppColors>() ?? const AppColors();
 }

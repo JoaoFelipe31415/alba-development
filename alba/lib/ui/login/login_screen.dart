@@ -18,6 +18,8 @@ import 'package:alba/ui/esqueci_senha/senha.dart';
 const double gap = 12.5;
 const double radiusEnterButton = Spaces.m + 2;
 
+const Color azulAlba = Color(0xFF0532AF);
+
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -88,13 +90,16 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                     Positioned(
-                      left: 26,
+                      left: 0,
+                      right: 0,
                       bottom: 70,
                       child: Text(
                         'Entre para continuar sua jornada!',
+                        textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: Spaces.xl,
                           fontWeight: FontWeight.bold,
+                          color: Colors.black.withOpacity(0.78),
                         ),
                       ),
                     ),
@@ -108,7 +113,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     children: [
                       InputLogin(
                         labelText: 'seu@email.com',
-                        prefixIcon: Icon(Icons.email),
+                        prefixIcon: const Icon(Icons.email),
                         validator: validator.byField(dto, 'email'),
                         controller: emailController,
                         onChanged: (value) {
@@ -117,7 +122,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       InputLogin(
                         labelText: '••••••••',
-                        prefixIcon: Icon(Icons.lock),
+                        prefixIcon: const Icon(Icons.lock),
                         isPassword: true,
                         validator: validator.byField(dto, 'password'),
                         controller: passwordController,
@@ -136,7 +141,15 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                             );
                           },
-                          child: const Text('Esqueci minha senha'),
+                          style: TextButton.styleFrom(
+                            foregroundColor: azulAlba,
+                          ),
+                          child: const Text(
+                            'Esqueci minha senha',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                         ),
                       ),
                       ElevatedButton(
@@ -151,7 +164,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               radiusEnterButton,
                             ),
                           ),
-                          backgroundColor: Colors.blue,
+                          backgroundColor: azulAlba,
                           minimumSize: const Size(double.infinity, 50),
                         ),
                         child: const Text(

@@ -25,19 +25,18 @@ class _HomeScreenState extends State<HomeScreen> {
     ChangeNotifierProvider(
       create: (context) => ProgressViewModel(),
       child: const ProgressScreen(),
-    ), // Progresso
+    ),
 
-    const GeraciamentoMetasScreen(), // Metas
+    const GeraciamentoMetasScreen(),
 
-    const SizedBox(), // ALBA
+    const SizedBox(),
 
-    const GerenciamentoTarefasScreen(), // Tarefas
+    const GerenciamentoTarefasScreen(),
 
-    const _ProximamentScreen(), // Menu
+    const _ProximamentScreen(),
   ];
 
   Future<void> _openAlbaWhatsapp() async {
-    // Número oficial da ALBA
     final whatsappUrl = Uri.parse('whatsapp://send?phone=5581995705981');
     final webUrl = Uri.parse('https://wa.me/5581995705981');
 
@@ -57,12 +56,20 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final selectedIndex = _selectedIndex.clamp(0, _screens.length - 1).toInt();
+    final keyboardIsOpen = MediaQuery.of(context).viewInsets.bottom > 0;
 
     return Scaffold(
       backgroundColor: context.colors.whiteColor,
       body: _screens[selectedIndex],
+
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      floatingActionButton: _AlbaNavButton(onTap: _openAlbaWhatsapp),
+
+      // Quando o teclado abre, escondemos a bolinha ALBA.
+      // Isso impede que ela suba e fique por cima da tela.
+      floatingActionButton: keyboardIsOpen
+          ? null
+          : _AlbaNavButton(onTap: _openAlbaWhatsapp),
+
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: selectedIndex,
         onTap: (index) async {
@@ -76,15 +83,9 @@ class _HomeScreenState extends State<HomeScreen> {
           });
         },
         backgroundColor: context.colors.azulAlba,
-
-        // Cor do item selecionado: mesma cor do círculo da ALBA
         selectedItemColor: _albaCircleColor,
-
-        // Cor dos itens não selecionados
         unselectedItemColor: _unselectedNavColor,
-
         type: BottomNavigationBarType.fixed,
-
         selectedIconTheme: const IconThemeData(
           color: _albaCircleColor,
           size: 30,
@@ -93,7 +94,6 @@ class _HomeScreenState extends State<HomeScreen> {
           color: _unselectedNavColor,
           size: 26,
         ),
-
         selectedLabelStyle: const TextStyle(
           color: _albaCircleColor,
           fontSize: 15,
@@ -104,11 +104,9 @@ class _HomeScreenState extends State<HomeScreen> {
           fontSize: 13,
           fontWeight: FontWeight.w500,
         ),
-
         showSelectedLabels: true,
         showUnselectedLabels: true,
         enableFeedback: true,
-
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.bar_chart),
@@ -127,7 +125,10 @@ class _HomeScreenState extends State<HomeScreen> {
             icon: Icon(Icons.check_circle),
             label: 'Tarefas',
           ),
-          BottomNavigationBarItem(icon: Icon(Icons.menu), label: 'Menu'),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.menu),
+            label: 'Menu',
+          ),
         ],
       ),
     );

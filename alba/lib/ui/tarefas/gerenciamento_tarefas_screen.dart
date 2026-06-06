@@ -713,10 +713,8 @@ class _GerenciamentoTarefasScreenState
       appBar: AppBar(
         backgroundColor: colors.whiteColor,
         elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios, color: colors.azulAlba, size: 20),
-          onPressed: () => Navigator.pop(context),
-        ),
+        automaticallyImplyLeading: false,
+        centerTitle: true,
         title: Text(
           'Gerenciamento de Tarefas',
           style: TextStyle(

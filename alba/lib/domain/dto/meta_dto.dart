@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class MetaDto {
   String? id;
   String tituloMeta;
@@ -7,6 +9,9 @@ class MetaDto {
   String userId;
   DateTime dataCriacao;
 
+  bool concluida;
+  DateTime? dataConclusao;
+
   MetaDto({
     this.id,
     required this.tituloMeta,
@@ -15,6 +20,8 @@ class MetaDto {
     required this.tag,
     required this.userId,
     required this.dataCriacao,
+    this.concluida = false,
+    this.dataConclusao,
   });
 
   void setTitulo(String value) {
@@ -33,6 +40,11 @@ class MetaDto {
     tag = value;
   }
 
+  void setConcluida(bool value) {
+    concluida = value;
+    dataConclusao = value ? DateTime.now() : null;
+  }
+
   Map<String, dynamic> toMap() {
     return {
       'tituloMeta': tituloMeta,
@@ -41,6 +53,8 @@ class MetaDto {
       'tag': tag,
       'userId': userId,
       'dataCriacao': dataCriacao,
+      'concluida': concluida,
+      'dataConclusao': dataConclusao,
     };
   }
 
@@ -49,10 +63,32 @@ class MetaDto {
       id: id,
       tituloMeta: data['tituloMeta'] ?? '',
       descricao: data['descricao'],
-      prazo: (data['prazo'] as dynamic).toDate() ?? DateTime.now(),
+      prazo: _parseDate(data['prazo']) ?? DateTime.now(),
       tag: data['tag'] ?? 'faculdade',
       userId: data['userId'] ?? '',
-      dataCriacao: (data['dataCriacao'] as dynamic).toDate() ?? DateTime.now(),
+      dataCriacao: _parseDate(data['dataCriacao']) ?? DateTime.now(),
+      concluida: data['concluida'] == true,
+      dataConclusao: _parseDate(data['dataConclusao']),
     );
+  }
+
+  static DateTime? _parseDate(dynamic value) {
+    if (value == null) {
+      return null;
+    }
+
+    if (value is Timestamp) {
+      return value.toDate();
+    }
+
+    if (value is DateTime) {
+      return value;
+    }
+
+    if (value is String) {
+      return DateTime.tryParse(value);
+    }
+
+    return null;
   }
 }

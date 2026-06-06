@@ -6,10 +6,8 @@ class MetasRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  
   String get _userId => _auth.currentUser?.uid ?? '';
 
-  
   List<MetaDto> _converterSnapshotParaMetas(
     QuerySnapshot<Map<String, dynamic>> querySnapshot,
   ) {
@@ -24,12 +22,8 @@ class MetasRepository {
       }
     }
 
-   
     metas.sort((a, b) {
-      if (a.dataCriacao == null && b.dataCriacao == null) return 0;
-      if (a.dataCriacao == null) return 1;
-      if (b.dataCriacao == null) return -1;
-      return b.dataCriacao!.compareTo(a.dataCriacao!);
+      return b.dataCriacao.compareTo(a.dataCriacao);
     });
 
     return metas;
@@ -37,20 +31,12 @@ class MetasRepository {
 
   Future<String> _obterTelefoneDoUsuario() async {
     final currentUser = _auth.currentUser;
-    if (currentUser == null) throw Exception('Usuário não autenticado');
+
+    if (currentUser == null) {
+      throw Exception('Usuário não autenticado');
+    }
 
     try {
-  
-      final todosUsuarios = await _firestore.collection('Users').get();
-      
-      print('🔎 [DEBUG TOTAL] Quantidade de documentos em Users: ${todosUsuarios.docs.length}');
-      
-      for (var doc in todosUsuarios.docs) {
-        print('🆔 ID do Documento no Banco: "${doc.id}"');
-        print('📄 Campos internos do documento: ${doc.data()}');
-      }
-
-      // Busca oficial por UID
       final userQuery = await _firestore
           .collection('Users')
           .where('uid', isEqualTo: currentUser.uid.trim())
@@ -58,12 +44,15 @@ class MetasRepository {
           .get();
 
       if (userQuery.docs.isNotEmpty) {
-        final telefoneAchado = userQuery.docs.first.id;
-        print('✅ [DEBUG ALBA] Telefone encontrado com sucesso: $telefoneAchado');
-        return telefoneAchado;
+        return userQuery.docs.first.id;
       }
 
       final emailLimpo = currentUser.email?.toLowerCase().trim();
+
+      if (emailLimpo == null || emailLimpo.isEmpty) {
+        return '';
+      }
+
       final userQueryEmail = await _firestore
           .collection('Users')
           .where('email', isEqualTo: emailLimpo)
@@ -74,41 +63,52 @@ class MetasRepository {
         return userQueryEmail.docs.first.id;
       }
 
-      return ""; 
+      return '';
     } catch (e) {
-      print('Erro crítico ao escanear coleção Users: $e');
-      return "";
+      print('Erro ao obter telefone do usuário: $e');
+      return '';
     }
   }
 
   Future<List<String>> _obterTodosIdentificadores() async {
-    List<String> ids = [_userId];
+    final ids = <String>[];
+
+    if (_userId.isNotEmpty) {
+      ids.add(_userId);
+    }
+
     try {
       final telefone = await _obterTelefoneDoUsuario();
-      
-      if (telefone.isNotEmpty) {
-       
-        if (!ids.contains(telefone)) {
-          ids.add(telefone);
-        }
-        
-        final telefoneComIgual = '=$telefone';
-        if (!ids.contains(telefoneComIgual)) {
-          ids.add(telefoneComIgual);
-        }
+
+      if (telefone.isNotEmpty && !ids.contains(telefone)) {
+        ids.add(telefone);
+      }
+
+      final telefoneComIgual = '=$telefone';
+
+      if (telefone.isNotEmpty && !ids.contains(telefoneComIgual)) {
+        ids.add(telefoneComIgual);
       }
     } catch (e) {
-      print('Aviso ao obter telefone: $e');
+      print('Aviso ao obter identificadores do usuário: $e');
     }
+
     return ids;
   }
 
   Future<String> criarMeta(MetaDto meta) async {
     try {
-      meta.userId = _userId; 
+      if (_userId.isEmpty) {
+        throw Exception('Usuário não autenticado');
+      }
+
+      meta.userId = _userId;
       meta.dataCriacao = DateTime.now();
+      meta.concluida = false;
+      meta.dataConclusao = null;
 
       final docRef = await _firestore.collection('Metas').add(meta.toMap());
+
       return docRef.id;
     } catch (e) {
       throw Exception('Não foi possível criar a meta. Tente novamente.');
@@ -118,6 +118,11 @@ class MetasRepository {
   Future<List<MetaDto>> obterMetas() async {
     try {
       final idsValidos = await _obterTodosIdentificadores();
+
+      if (idsValidos.isEmpty) {
+        return [];
+      }
+
       final querySnapshot = await _firestore
           .collection('Metas')
           .where('userId', whereIn: idsValidos)
@@ -129,39 +134,38 @@ class MetasRepository {
     }
   }
 
-  // O STREAM COM OS PRINTS DE DIAGNÓSTICO
   Stream<List<MetaDto>> obterMetasStream() async* {
     try {
-      // 1. Vai buscar a lista com o UID e o Telefone
       final idsValidos = await _obterTodosIdentificadores();
-      
-      // 🚨 PRINT 1: Vamos ver se ele achou o seu telefone com o "="
-      print('🚨 [DEBUG ALBA] IDs que o app vai buscar: $idsValidos'); 
+
+      if (idsValidos.isEmpty) {
+        yield [];
+        return;
+      }
 
       yield* _firestore
           .collection('Metas')
-          .where('userId', whereIn: idsValidos) 
+          .where('userId', whereIn: idsValidos)
           .snapshots()
           .map((querySnapshot) {
-            
-            // 🚨 PRINT 2: Vamos ver quantas metas o banco devolveu
-            print('🚨 [DEBUG ALBA] O Firebase retornou ${querySnapshot.docs.length} metas no total!');
-            
-            return _converterSnapshotParaMetas(querySnapshot);
-          });
+        return _converterSnapshotParaMetas(querySnapshot);
+      });
     } catch (e) {
-      // 🚨 PRINT 3: Se der erro, ele vai avisar qual é
-      print('🚨 [DEBUG ALBA] ERRO FATAL: $e');
-      throw Exception('Não foi possível carregar as metas em tempo real. Tente novamente.');
+      print('Erro ao carregar metas em tempo real: $e');
+      throw Exception(
+        'Não foi possível carregar as metas em tempo real. Tente novamente.',
+      );
     }
   }
 
   Future<MetaDto?> obterMetaPorId(String id) async {
     try {
       final doc = await _firestore.collection('Metas').doc(id).get();
-      if (doc.exists) {
-        return MetaDto.fromMap(doc.data() as Map<String, dynamic>, doc.id);
+
+      if (doc.exists && doc.data() != null) {
+        return MetaDto.fromMap(doc.data()!, doc.id);
       }
+
       return null;
     } catch (e) {
       throw Exception('Não foi possível carregar a meta. Tente novamente.');
@@ -170,7 +174,7 @@ class MetasRepository {
 
   Future<void> atualizarMeta(MetaDto meta) async {
     try {
-      if (meta.id == null) {
+      if (meta.id == null || meta.id!.isEmpty) {
         throw Exception('ID da meta é obrigatório para atualizar');
       }
 
@@ -187,6 +191,27 @@ class MetasRepository {
     }
   }
 
+  Future<void> atualizarConclusaoMeta({
+    required String metaId,
+    required bool concluida,
+  }) async {
+    try {
+      if (metaId.isEmpty) {
+        throw Exception('ID da meta é obrigatório para atualizar conclusão');
+      }
+
+      await _firestore.collection('Metas').doc(metaId).update({
+        'concluida': concluida,
+        'dataConclusao': concluida ? FieldValue.serverTimestamp() : null,
+      });
+    } catch (e) {
+      print('Erro ao atualizar conclusão da meta: $e');
+      throw Exception(
+        'Não foi possível atualizar o status da meta. Tente novamente.',
+      );
+    }
+  }
+
   Future<void> excluirMeta(String id) async {
     try {
       await _firestore.collection('Metas').doc(id).delete();
@@ -198,9 +223,11 @@ class MetasRepository {
 
       if (tarefas.docs.isNotEmpty) {
         final batch = _firestore.batch();
-        for (var tarefa in tarefas.docs) {
+
+        for (final tarefa in tarefas.docs) {
           batch.update(tarefa.reference, {'metaId': null});
         }
+
         await batch.commit();
       }
     } catch (e) {
@@ -212,16 +239,26 @@ class MetasRepository {
   Future<List<MetaDto>> buscarMetasPorTitulo(String titulo) async {
     try {
       final idsValidos = await _obterTodosIdentificadores();
+
+      if (idsValidos.isEmpty) {
+        return [];
+      }
+
       final querySnapshot = await _firestore
           .collection('Metas')
           .where('userId', whereIn: idsValidos)
           .get();
 
       final metas = _converterSnapshotParaMetas(querySnapshot);
+      final termoBusca = titulo.toLowerCase().trim();
 
-      return metas
-          .where((meta) => meta.tituloMeta.toLowerCase().contains(titulo.toLowerCase()))
-          .toList();
+      if (termoBusca.isEmpty) {
+        return metas;
+      }
+
+      return metas.where((meta) {
+        return meta.tituloMeta.toLowerCase().contains(termoBusca);
+      }).toList();
     } catch (e) {
       throw Exception('Não foi possível buscar as metas. Tente novamente.');
     }
@@ -230,22 +267,32 @@ class MetasRepository {
   Stream<List<MetaDto>> buscarMetasStream(String titulo) async* {
     try {
       final idsValidos = await _obterTodosIdentificadores();
-      
+
+      if (idsValidos.isEmpty) {
+        yield [];
+        return;
+      }
+
       yield* _firestore
           .collection('Metas')
           .where('userId', whereIn: idsValidos)
           .snapshots()
           .map((querySnapshot) {
-            final metas = _converterSnapshotParaMetas(querySnapshot);
+        final metas = _converterSnapshotParaMetas(querySnapshot);
+        final termoBusca = titulo.toLowerCase().trim();
 
-            if (titulo.isEmpty) return metas;
-            
-            return metas
-                .where((meta) => meta.tituloMeta.toLowerCase().contains(titulo.toLowerCase()))
-                .toList();
-          });
+        if (termoBusca.isEmpty) {
+          return metas;
+        }
+
+        return metas.where((meta) {
+          return meta.tituloMeta.toLowerCase().contains(termoBusca);
+        }).toList();
+      });
     } catch (e) {
-      throw Exception('Não foi possível buscar as metas em tempo real. Tente novamente.');
+      throw Exception(
+        'Não foi possível buscar as metas em tempo real. Tente novamente.',
+      );
     }
   }
 }

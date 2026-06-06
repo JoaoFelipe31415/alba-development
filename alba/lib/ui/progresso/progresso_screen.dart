@@ -15,6 +15,7 @@ class ProgressScreen extends StatelessWidget {
   final Color lightOrangeCard = const Color(0xFFFFF7ED);
   final Color lightPinkCard = const Color(0xFFFDF2F8);
   final Color textColor = const Color(0xFF334155);
+  final Color albaLightBlue = const Color(0xFF7FE2E1);
 
   @override
   Widget build(BuildContext context) {
@@ -128,7 +129,6 @@ class ProgressScreen extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // Removi o "Dia" e a "Semana"
           _filterButton("Semana", viewModel),
           const SizedBox(width: 8),
           _filterButton("Mês", viewModel),
@@ -139,6 +139,7 @@ class ProgressScreen extends StatelessWidget {
 
   Widget _filterButton(String label, ProgressViewModel viewModel) {
     bool isSelected = viewModel.currentFilter == label;
+
     return GestureDetector(
       onTap: () => viewModel.changeFilter(label),
       child: Container(
@@ -159,92 +160,220 @@ class ProgressScreen extends StatelessWidget {
   }
 
   Widget _buildInsightsSection(ProgressDataModel data) {
+    if (data.insights.isEmpty) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildSectionTitleWithIcon(
+            title: "Insights da ALBA 🤖",
+            icon: Icons.auto_awesome_rounded,
+          ),
+          const SizedBox(height: 16),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(22),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.035),
+                  blurRadius: 16,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                _buildModernInsightIcon('default'),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Text(
+                    'Continue usando o app para que a ALBA gere insights personalizados sobre sua rotina.',
+                    style: TextStyle(
+                      color: textColor.withOpacity(0.78),
+                      fontSize: 13,
+                      height: 1.35,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      );
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Icon(Icons.auto_awesome, color: primaryBlue),
-            const SizedBox(width: 8),
-            Text(
-              "Insights da ALBA 🤖",
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: textColor,
-              ),
-            ),
-          ],
+        _buildSectionTitleWithIcon(
+          title: "Insights da ALBA 🤖",
+          icon: Icons.auto_awesome_rounded,
         ),
         const SizedBox(height: 16),
-        ...data.insights
-            .map(
-              (insight) => Container(
-                margin: const EdgeInsets.only(bottom: 12),
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
+        ...data.insights.map((insight) {
+          return Container(
+            margin: const EdgeInsets.only(bottom: 14),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(22),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.035),
+                  blurRadius: 16,
+                  offset: const Offset(0, 8),
                 ),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: insight.iconType == 'doc'
-                            ? lightGreenCard
-                            : lightPinkCard,
-                        borderRadius: BorderRadius.circular(12),
+              ],
+            ),
+            child: Row(
+              children: [
+                _buildModernInsightIcon(insight.iconType),
+                const SizedBox(width: 15),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        insight.title,
+                        style: TextStyle(
+                          color: const Color(0xFF111827),
+                          fontWeight: FontWeight.w800,
+                          fontSize: 15.5,
+                          height: 1.15,
+                        ),
                       ),
-                      child: Icon(
-                        insight.iconType == 'doc'
-                            ? Icons.description
-                            : Icons.image,
-                        color: insight.iconType == 'doc'
-                            ? Colors.green
-                            : Colors.pink,
+                      const SizedBox(height: 6),
+                      Text(
+                        insight.description,
+                        style: TextStyle(
+                          color: textColor.withOpacity(0.62),
+                          fontSize: 13,
+                          height: 1.35,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            insight.title,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            insight.description,
-                            style: const TextStyle(
-                              color: Colors.grey,
-                              fontSize: 13,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const Icon(Icons.arrow_forward, color: Colors.grey),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-            )
-            .toList(),
+                const SizedBox(width: 8),
+                Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8FAFC),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: const Color(0xFFE5E7EB)),
+                  ),
+                  child: Icon(
+                    Icons.arrow_forward_rounded,
+                    color: primaryBlue.withOpacity(0.72),
+                    size: 20,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }).toList(),
       ],
+    );
+  }
+
+  Widget _buildSectionTitleWithIcon({
+    required String title,
+    required IconData icon,
+  }) {
+    return Row(
+      children: [
+        Container(
+          width: 34,
+          height: 34,
+          decoration: BoxDecoration(
+            color: lightBlueCard,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(icon, color: primaryBlue, size: 20),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            title,
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+              color: textColor,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildModernInsightIcon(String iconType) {
+    IconData icon;
+    Color iconColor;
+    Color backgroundColor;
+
+    switch (iconType) {
+      case 'warning':
+      case 'alert':
+      case 'image':
+        icon = Icons.tips_and_updates_rounded;
+        iconColor = const Color(0xFFF59E0B);
+        backgroundColor = const Color(0xFFFFF7ED);
+        break;
+
+      case 'focus':
+        icon = Icons.center_focus_strong_rounded;
+        iconColor = const Color(0xFF1D4ED8);
+        backgroundColor = const Color(0xFFEFF6FF);
+        break;
+
+      case 'rest':
+        icon = Icons.self_improvement_rounded;
+        iconColor = const Color(0xFF10B981);
+        backgroundColor = const Color(0xFFECFDF5);
+        break;
+
+      case 'doc':
+      default:
+        icon = Icons.lightbulb_rounded;
+        iconColor = primaryBlue;
+        backgroundColor = const Color(0xFFEFF6FF);
+        break;
+    }
+
+    return Container(
+      width: 54,
+      height: 54,
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.white, width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: iconColor.withOpacity(0.10),
+            blurRadius: 14,
+            offset: const Offset(0, 7),
+          ),
+        ],
+      ),
+      child: Icon(icon, color: iconColor, size: 27),
     );
   }
 
   Widget _buildEmotionalWellbeing(ProgressViewModel viewModel) {
     final nomesEmojis = {
+      "😃": "Ótimo",
       "😄": "Ótimo",
       "😊": "Bem",
       "😐": "Normal",
       "😔": "Para baixo",
+      "😣": "Estresse",
       "😫": "Exausto",
+      "⚪": "Sem dados",
     };
 
     String statusTexto = nomesEmojis[viewModel.emojiDestaque] ?? "Normal";
@@ -349,7 +478,7 @@ class ProgressScreen extends StatelessWidget {
                       children: [
                         Row(
                           children: [
-                            const Icon(Icons.book, size: 16), // Mock de ícone
+                            const Icon(Icons.book, size: 16),
                             const SizedBox(width: 8),
                             Text(
                               item.label,
@@ -361,10 +490,10 @@ class ProgressScreen extends StatelessWidget {
                         ),
                         Text(
                           item.label.contains("Descanso")
-                              ? "${item.value}h" // Se for descanso, mostra ex: 6h
+                              ? "${item.value}h"
                               : item.value == 1
-                              ? "${item.value} dia" // Se for 1, mostra: 1 dia
-                              : "${item.value} dias", // Se for 0 ou mais de 1, mostra: 2 dias
+                              ? "${item.value} dia"
+                              : "${item.value} dias",
                           style: const TextStyle(fontWeight: FontWeight.bold),
                         ),
                       ],
@@ -393,11 +522,9 @@ class ProgressScreen extends StatelessWidget {
     ProgressDataModel data,
     ProgressViewModel viewModel,
   ) {
-    // 👈 Adicione a viewModel aqui
     const Color colorAtribuidas = Color(0xFFD1D5DB);
     const Color colorConcluidas = Color(0xFF4F46E5);
 
-    // ✅ Título Dinâmico
     String tituloSessao = viewModel.isMensal
         ? "Produtividade Mensal"
         : "Produtividade Semanal";
@@ -406,7 +533,7 @@ class ProgressScreen extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          tituloSessao, // 👈 Agora muda conforme o filtro
+          tituloSessao,
           style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
@@ -433,12 +560,10 @@ class ProgressScreen extends StatelessWidget {
                       barTouchData: BarTouchData(
                         enabled: false,
                         touchTooltipData: BarTouchTooltipData(
-                          getTooltipColor: (_) =>
-                              Colors.transparent, // Fundo transparente
+                          getTooltipColor: (_) => Colors.transparent,
                           tooltipBorderRadius: BorderRadius.zero,
                           tooltipPadding: EdgeInsets.zero,
                           tooltipMargin: 4,
-                          // ✅ Remove qualquer sombra que possa criar o "quadrado"
                           getTooltipItem: (group, groupIndex, rod, rodIndex) {
                             if (rod.toY <= 0.1) return null;
                             return BarTooltipItem(
@@ -451,7 +576,7 @@ class ProgressScreen extends StatelessWidget {
                             );
                           },
                         ),
-                      ), // 👈 Fechou barTouchData
+                      ),
                       titlesData: FlTitlesData(
                         show: true,
                         bottomTitles: AxisTitles(
@@ -464,6 +589,7 @@ class ProgressScreen extends StatelessWidget {
                                   index >= data.weeklyProductivity.length) {
                                 return const SizedBox();
                               }
+
                               return Padding(
                                 padding: const EdgeInsets.only(top: 8.0),
                                 child: Text(
@@ -517,10 +643,7 @@ class ProgressScreen extends StatelessWidget {
                               borderRadius: BorderRadius.circular(4),
                             ),
                           ],
-                          showingTooltipIndicators: [
-                            0,
-                            1,
-                          ], // Mostra os números em cima
+                          showingTooltipIndicators: [0, 1],
                         );
                       }).toList(),
                     ),
@@ -602,7 +725,6 @@ class ProgressScreen extends StatelessWidget {
     double maiorValor = 0;
 
     for (var d in dados) {
-      // Verificamos qual o maior valor entre as barras cinzas e roxas
       if (d.attributed > maiorValor) maiorValor = d.attributed.toDouble();
       if (d.value > maiorValor) maiorValor = d.value.toDouble();
     }
@@ -640,11 +762,7 @@ class ProgressScreen extends StatelessWidget {
                 padding: const EdgeInsets.only(bottom: 12),
                 child: Row(
                   children: [
-                    const Icon(
-                      Icons.warning,
-                      size: 16,
-                      color: Colors.orange,
-                    ), // Mock ícone
+                    const Icon(Icons.warning, size: 16, color: Colors.orange),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Column(
@@ -678,7 +796,7 @@ class ProgressScreen extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         AlbaFeedbackBox(
-          bgColor: lightOrangeCard, // Laranja para indicar atenção/alerta
+          bgColor: lightOrangeCard,
           text: "⚠️ ${viewModel.feedbackGargalos}",
         ),
       ],
@@ -707,7 +825,7 @@ class ProgressScreen extends StatelessWidget {
             fontWeight: FontWeight.bold,
             color: textColor,
           ),
-        ), // Reduzi de 18 para 16
+        ),
         const SizedBox(height: 16),
         Container(
           padding: const EdgeInsets.all(20),
@@ -726,17 +844,16 @@ class ProgressScreen extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  // Parte do Gráfico Donut
                   Expanded(
                     flex: 1,
                     child: SizedBox(
-                      height: 160, // Reduzi de 160 para 140
+                      height: 160,
                       child: Stack(
                         children: [
                           PieChart(
                             PieChartData(
                               sectionsSpace: 0,
-                              centerSpaceRadius: 50, // Reduzi de 50 para 40
+                              centerSpaceRadius: 50,
                               startDegreeOffset: -90,
                               sections: [
                                 PieChartSectionData(
@@ -777,7 +894,6 @@ class ProgressScreen extends StatelessWidget {
                       ),
                     ),
                   ),
-                  // Parte do Texto de Destaque
                   Expanded(
                     flex: 1,
                     child: Column(
@@ -803,7 +919,6 @@ class ProgressScreen extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 24),
-              // Legendas com fonte menor (Ajuste o _buildRestLegendItem para usar fontSize 12 ou 13)
               _buildRestLegendItem(
                 colorNenhum,
                 "Nenhum",
@@ -868,10 +983,7 @@ class ProgressScreen extends StatelessWidget {
           ),
         ),
         FractionallySizedBox(
-          widthFactor: percentage.clamp(
-            0.0,
-            1.0,
-          ), // Garante que não passe de 100%
+          widthFactor: percentage.clamp(0.0, 1.0),
           child: Container(
             height: 8,
             decoration: BoxDecoration(

@@ -2,6 +2,7 @@ import 'package:alba/data/repositories/auth_repository.dart';
 import 'package:alba/domain/dto/progresso_dto.dart';
 import 'package:alba/data/repositories/progresso_repository.dart';
 import 'package:alba/domain/dto/tarefa_dto.dart';
+import 'package:alba/data/services/alba_insights_service.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:alba/data/repositories/tarefas_repository.dart';
@@ -33,6 +34,7 @@ class ProgressViewModel extends ChangeNotifier {
 
     DateTime dataInicio;
     DateTime dataFim = DateTime.now();
+
     if (isMensal) {
       dataInicio = DateTime(agora.year, agora.month, 1);
       dataFim = DateTime(agora.year, agora.month + 1, 0, 23, 59, 59);
@@ -60,15 +62,21 @@ class ProgressViewModel extends ChangeNotifier {
         dataInicio,
         dataFim,
       );
+
       final todasAsTarefas = await _tarefasRepository.obterTarefas();
 
       _processarEmojis(monitoramentoPeriodo, dataInicio);
 
-      _processarGargalos(monitoramentoPeriodo, dataInicio, dataFim);
+      _processarGargalos(
+        monitoramentoPeriodo,
+        dataInicio,
+        dataFim,
+      );
 
       final tarefasConcluidas = todasAsTarefas
-          .where((t) => t.status == 'concluida')
+          .where((tarefa) => tarefa.status.toLowerCase().trim() == 'concluida')
           .toList();
+
       _processarDistribuicaoFoco(
         tarefasConcluidas,
         monitoramentoPeriodo,
@@ -76,15 +84,42 @@ class ProgressViewModel extends ChangeNotifier {
         dataFim,
       );
 
-      _processarProdutividadePorPeriodo(todasAsTarefas, dataInicio, dataFim);
+      _processarProdutividadePorPeriodo(
+        todasAsTarefas,
+        dataInicio,
+        dataFim,
+      );
 
-      _processarEstatisticasDescanso(monitoramentoPeriodo, dataInicio, dataFim);
+      _processarEstatisticasDescanso(
+        monitoramentoPeriodo,
+        dataInicio,
+        dataFim,
+      );
+
+      _gerarInsightsDaAlba(todasAsTarefas);
     } else {
       data = ProgressDTO.fromFirestore({});
+      _gerarInsightsDaAlba([]);
     }
 
     isLoading = false;
     notifyListeners();
+  }
+
+  void _gerarInsightsDaAlba(List<TarefaDto> tarefas) {
+    if (data == null) return;
+
+    final novosInsights = AlbaInsightsService.gerarInsights(
+      data: data!,
+      tarefas: tarefas,
+      isMensal: isMensal,
+      weeklyMood: weeklyMood,
+      emojiDestaque: emojiDestaque,
+    );
+
+    data!.insights
+      ..clear()
+      ..addAll(novosInsights);
   }
 
   void _processarEmojis(
@@ -92,28 +127,40 @@ class ProgressViewModel extends ChangeNotifier {
     DateTime inicioSemana,
   ) {
     weeklyMood = List.generate(7, (_) => '⚪');
+    emojiDestaque = '⚪';
+
     for (var doc in monitoramento) {
       if (doc['data'] != null) {
-        DateTime dataResposta = (doc['data'] as Timestamp).toDate();
+        DateTime dataResposta;
 
-        if (dataResposta.isAfter(inicioSemana)) {
+        if (doc['data'] is Timestamp) {
+          dataResposta = (doc['data'] as Timestamp).toDate();
+        } else if (doc['data'] is DateTime) {
+          dataResposta = doc['data'] as DateTime;
+        } else {
+          continue;
+        }
+
+        if (dataResposta.isAfter(inicioSemana) ||
+            dataResposta.isAtSameMomentAs(inicioSemana)) {
           int indiceDia = dataResposta.weekday % 7;
           weeklyMood[indiceDia] = _mapMood(doc['sentimento'] ?? "");
         }
+      }
+    }
 
-        if (weeklyMood.any((e) => e != "⚪")) {
-          var contagem = <String, int>{};
-          for (var e in weeklyMood) {
-            if (e != "⚪") contagem[e] = (contagem[e] ?? 0) + 1;
-          }
+    if (weeklyMood.any((emoji) => emoji != "⚪")) {
+      final contagem = <String, int>{};
 
-          emojiDestaque = contagem.entries
-              .reduce((a, b) => a.value >= b.value ? a : b)
-              .key;
-
-          notifyListeners();
+      for (final emoji in weeklyMood) {
+        if (emoji != "⚪") {
+          contagem[emoji] = (contagem[emoji] ?? 0) + 1;
         }
       }
+
+      emojiDestaque = contagem.entries
+          .reduce((a, b) => a.value >= b.value ? a : b)
+          .key;
     }
   }
 
@@ -123,6 +170,8 @@ class ProgressViewModel extends ChangeNotifier {
     }
 
     final frases = {
+      "😃":
+          "Sua semana foi incrível! Esse alto astral reflete diretamente na sua produtividade. Continue assim!",
       "😄":
           "Sua semana foi incrível! Esse alto astral reflete diretamente na sua produtividade. Continue assim!",
       "😊":
@@ -131,6 +180,8 @@ class ProgressViewModel extends ChangeNotifier {
           "Uma semana estável. Se sentir que a rotina está ficando pesada, não esqueça de conferir seus horários de descanso.",
       "😔":
           "Notei que as coisas foram um pouco mais difíceis esses dias. Tente priorizar tarefas menores para não se sobrecarregar.",
+      "😣":
+          "Sinal de atenção. Seu estresse apareceu no período; reduza a carga e priorize o essencial.",
       "😫":
           "Sinal vermelho! 🚨 Sua exaustão está alta. Que tal delegar algo ou revisar seus prazos para a próxima semana?",
       "⚪": "Ainda não tenho dados suficientes sobre seu humor esta semana.",
@@ -151,16 +202,22 @@ class ProgressViewModel extends ChangeNotifier {
       List<int> concluidasMes = List.filled(4, 0);
 
       for (var tarefa in tarefas) {
-        if (tarefa.dataCriacao.isAfter(dataInicio) ||
-            tarefa.dataCriacao.isAtSameMomentAs(dataInicio)) {
-          int diferencaDias = tarefa.dataCriacao.difference(dataInicio).inDays;
+        final dentroDoPeriodo =
+            (tarefa.dataCriacao.isAfter(dataInicio) ||
+                    tarefa.dataCriacao.isAtSameMomentAs(dataInicio)) &&
+                (tarefa.dataCriacao.isBefore(dataFim) ||
+                    tarefa.dataCriacao.isAtSameMomentAs(dataFim));
 
+        if (dentroDoPeriodo) {
+          int diferencaDias = tarefa.dataCriacao.difference(dataInicio).inDays;
           int indexSemana = diferencaDias ~/ 7;
 
           if (indexSemana > 3) indexSemana = 3;
+          if (indexSemana < 0) indexSemana = 0;
 
           planejadasMes[indexSemana]++;
-          if (tarefa.status == 'concluida') {
+
+          if (tarefa.status.toLowerCase().trim() == 'concluida') {
             concluidasMes[indexSemana]++;
           }
         }
@@ -168,6 +225,7 @@ class ProgressViewModel extends ChangeNotifier {
 
       int totalP = planejadasMes.reduce((a, b) => a + b);
       int totalC = concluidasMes.reduce((a, b) => a + b);
+
       data!.completionRate = totalP > 0 ? ((totalC / totalP) * 100).round() : 0;
 
       data!.weeklyProductivity = List.generate(4, (i) {
@@ -185,14 +243,16 @@ class ProgressViewModel extends ChangeNotifier {
       for (var tarefa in tarefas) {
         bool dentroDoPeriodo =
             (tarefa.dataCriacao.isAfter(dataInicio) ||
-                tarefa.dataCriacao.isAtSameMomentAs(dataInicio)) &&
-            (tarefa.dataCriacao.isBefore(dataFim) ||
-                tarefa.dataCriacao.isAtSameMomentAs(dataFim));
+                    tarefa.dataCriacao.isAtSameMomentAs(dataInicio)) &&
+                (tarefa.dataCriacao.isBefore(dataFim) ||
+                    tarefa.dataCriacao.isAtSameMomentAs(dataFim));
 
         if (dentroDoPeriodo) {
           int indexDia = tarefa.dataCriacao.weekday % 7;
+
           planejadas[indexDia]++;
-          if (tarefa.status == 'concluida') {
+
+          if (tarefa.status.toLowerCase().trim() == 'concluida') {
             concluidas[indexDia]++;
           }
         }
@@ -200,6 +260,7 @@ class ProgressViewModel extends ChangeNotifier {
 
       int totalP = planejadas.reduce((a, b) => a + b);
       int totalC = concluidas.reduce((a, b) => a + b);
+
       data!.completionRate = totalP > 0 ? ((totalC / totalP) * 100).round() : 0;
 
       data!.weeklyProductivity = List.generate(7, (i) {
@@ -211,8 +272,6 @@ class ProgressViewModel extends ChangeNotifier {
         );
       });
     }
-
-    notifyListeners();
   }
 
   String _mapMood(String sentiment) {
@@ -223,6 +282,7 @@ class ProgressViewModel extends ChangeNotifier {
     if (s.contains('neutr')) return '😐';
     if (s.contains('cansad')) return '😔';
     if (s.contains('estressad')) return '😣';
+    if (s.contains('exaust')) return '😫';
 
     return '⚪';
   }
@@ -241,6 +301,7 @@ class ProgressViewModel extends ChangeNotifier {
 
     for (var doc in documentos) {
       DateTime? dataDoc;
+
       if (doc['data'] is Timestamp) {
         dataDoc = (doc['data'] as Timestamp).toDate();
       } else if (doc['data'] is DateTime) {
@@ -258,6 +319,7 @@ class ProgressViewModel extends ChangeNotifier {
 
           if (gargaloBruto != null) {
             String chave = _normalizarGargalo(gargaloBruto);
+
             if (contador.containsKey(chave)) {
               contador[chave] = contador[chave]! + 1;
             }
@@ -276,40 +338,57 @@ class ProgressViewModel extends ChangeNotifier {
     }).toList();
 
     data?.bottlenecks.sort((a, b) => b.value.compareTo(a.value));
-
-    notifyListeners();
   }
 
   String _definirCorGargalo(String label) {
     switch (label) {
       case 'Procrastinação':
-        return "0xFFEF4444"; // Vermelho
+        return "0xFFEF4444";
       case 'Cansaço':
-        return "0xFFF59E0B"; // Laranja
+        return "0xFFF59E0B";
       case 'Prazos da Faculdade':
-        return "0xFF3B82F6"; // Azul
+        return "0xFF3B82F6";
       case 'Demandas do Negócio':
-        return "0xFF10B981"; // Verde
+        return "0xFF10B981";
       default:
-        return "0xFF6B7280"; // Cinza
+        return "0xFF6B7280";
     }
   }
 
   String _normalizarGargalo(String texto) {
     final t = texto.toLowerCase();
-    if (t.contains('procrastinação')) return 'Procrastinação';
-    if (t.contains('cansaço')) return 'Cansaço';
-    if (t.contains('faculdade')) return 'Prazos da Faculdade';
+
+    if (t.contains('procrastinação') || t.contains('procrastinacao')) {
+      return 'Procrastinação';
+    }
+
+    if (t.contains('cansaço') || t.contains('cansaco') || t.contains('cansad')) {
+      return 'Cansaço';
+    }
+
+    if (t.contains('faculdade') || t.contains('universidade')) {
+      return 'Prazos da Faculdade';
+    }
+
     if (t.contains('negóc') || t.contains('negoc')) {
       return 'Demandas do Negócio';
     }
+
     return '';
   }
 
   String get feedbackGargalos {
     if (data == null || data!.bottlenecks.isEmpty) return "";
 
-    final maiorGargalo = data!.bottlenecks.reduce(
+    final gargalosComValor = data!.bottlenecks
+        .where((gargalo) => gargalo.value > 0)
+        .toList();
+
+    if (gargalosComValor.isEmpty) {
+      return "Nenhum gargalo forte apareceu neste período. Continue acompanhando sua rotina para manter o controle.";
+    }
+
+    final maiorGargalo = gargalosComValor.reduce(
       (a, b) => a.value > b.value ? a : b,
     );
 
@@ -341,12 +420,13 @@ class ProgressViewModel extends ChangeNotifier {
     for (var tarefa in tarefas) {
       bool dentroDoPeriodo =
           (tarefa.dataCriacao.isAfter(dataInicio) ||
-              tarefa.dataCriacao.isAtSameMomentAs(dataInicio)) &&
-          (tarefa.dataCriacao.isBefore(dataFim) ||
-              tarefa.dataCriacao.isAtSameMomentAs(dataFim));
+                  tarefa.dataCriacao.isAtSameMomentAs(dataInicio)) &&
+              (tarefa.dataCriacao.isBefore(dataFim) ||
+                  tarefa.dataCriacao.isAtSameMomentAs(dataFim));
 
       if (dentroDoPeriodo) {
         String tag = (tarefa.tag ?? '').toLowerCase().trim();
+
         String diaChave =
             "${tarefa.dataCriacao.year}-${tarefa.dataCriacao.month}-${tarefa.dataCriacao.day}";
 
@@ -360,16 +440,19 @@ class ProgressViewModel extends ChangeNotifier {
 
     for (var doc in monitoramento) {
       DateTime? dataDoc;
+
       if (doc['data'] is Timestamp) {
         dataDoc = (doc['data'] as Timestamp).toDate();
+      } else if (doc['data'] is DateTime) {
+        dataDoc = doc['data'] as DateTime;
       }
-      if (doc['data'] is DateTime) dataDoc = doc['data'] as DateTime;
 
       if (dataDoc != null) {
         bool dentroDoPeriodoMonit =
             (dataDoc.isAfter(dataInicio) ||
-                dataDoc.isAtSameMomentAs(dataInicio)) &&
-            (dataDoc.isBefore(dataFim) || dataDoc.isAtSameMomentAs(dataFim));
+                    dataDoc.isAtSameMomentAs(dataInicio)) &&
+                (dataDoc.isBefore(dataFim) ||
+                    dataDoc.isAtSameMomentAs(dataFim));
 
         if (dentroDoPeriodoMonit && doc['tempoDescanso'] != null) {
           int minutos = _extrairMinutos(doc['tempoDescanso'].toString());
@@ -382,24 +465,22 @@ class ProgressViewModel extends ChangeNotifier {
       BarDataModel(
         label: "Universidade",
         value: diasUni.length,
-        colorHex: "0xFF1D4ED8", // Azul
+        colorHex: "0xFF1D4ED8",
         attributed: 0,
       ),
       BarDataModel(
         label: "Negócio",
         value: diasNeg.length,
-        colorHex: "0xFF84FA1E", // Verde Lima
+        colorHex: "0xFF84FA1E",
         attributed: 0,
       ),
       BarDataModel(
         label: "Descanso",
         value: totalDescanso.round(),
-        colorHex: "0xFFD946EF", // Rosa/Fúcsia
+        colorHex: "0xFFD946EF",
         attributed: 0,
       ),
     ];
-
-    notifyListeners();
   }
 
   String get feedbackFoco {
@@ -407,7 +488,15 @@ class ProgressViewModel extends ChangeNotifier {
       return "Carregando dados de foco...";
     }
 
-    final principal = data!.focusDistribution.reduce(
+    final focosComValor = data!.focusDistribution
+        .where((foco) => foco.value > 0)
+        .toList();
+
+    if (focosComValor.isEmpty) {
+      return "Ainda não identifiquei uma área dominante de foco neste período.";
+    }
+
+    final principal = focosComValor.reduce(
       (a, b) => a.value > b.value ? a : b,
     );
 
@@ -433,6 +522,7 @@ class ProgressViewModel extends ChangeNotifier {
 
     var documentosFiltrados = monitoramento.where((doc) {
       DateTime? dataDoc;
+
       if (doc['data'] is Timestamp) {
         dataDoc = (doc['data'] as Timestamp).toDate();
       } else if (doc['data'] is DateTime) {
@@ -456,8 +546,8 @@ class ProgressViewModel extends ChangeNotifier {
         'Entre 1 e 2 horas': 0,
         'Mais de 2 horas': 0,
       };
+
       data!.mostFrequentRest = "Nenhum";
-      notifyListeners();
       return;
     }
 
@@ -499,8 +589,6 @@ class ProgressViewModel extends ChangeNotifier {
     data!.mostFrequentRest = contagens.entries
         .reduce((a, b) => a.value >= b.value ? a : b)
         .key;
-
-    notifyListeners();
   }
 
   String get feedbackDescanso {
@@ -524,16 +612,16 @@ class ProgressViewModel extends ChangeNotifier {
     if (texto.contains('h') || texto.contains('hora')) {
       return valor * 60;
     }
+
     return valor;
   }
 
   void changeFilter(String newFilter) {
     if (currentFilter == newFilter) return;
-    currentFilter = newFilter;
 
+    currentFilter = newFilter;
     data?.weeklyProductivity = [];
 
     loadData();
-    notifyListeners();
   }
 }

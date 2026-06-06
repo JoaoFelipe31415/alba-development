@@ -11,8 +11,10 @@ class ForgotPasswordScreen extends StatefulWidget {
 
 class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   static const Color _backgroundColor = Color(0xFFF1F2F6);
-  static const Color _primaryBlue = Color(0xFF123DBE);
+  static const Color _primaryBlue = Color(0xFF0532AF);
   static const Color _inputBackgroundColor = Color(0xFFD9DEE7);
+  static const Color _inputBorderColor = Color(0xFFABABAB);
+  static const Color _albaLightBlue = Color(0xFF7FE2E1);
 
   static const String _title = 'ESQUECEU\nA SENHA?';
   static const String _emailHint = 'informe seu email';
@@ -73,9 +75,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   }
 
   void _showMessage(String message) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
   }
 
   @override
@@ -141,28 +143,73 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       alignment: Alignment.center,
       child: SizedBox(
         width: 312,
-        child: Container(
-          height: 34,
-          decoration: BoxDecoration(
-            color: _inputBackgroundColor,
-            borderRadius: BorderRadius.circular(6),
+        child: TextFormField(
+          controller: _emailController,
+          validator: _validateEmail,
+          keyboardType: TextInputType.emailAddress,
+          style: const TextStyle(
+            fontSize: 13,
+            color: Color(0xFF424242),
           ),
-          child: TextFormField(
-            controller: _emailController,
-            validator: _validateEmail,
-            keyboardType: TextInputType.emailAddress,
-            style: const TextStyle(fontSize: 12),
-            decoration: const InputDecoration(
-              hintText: _emailHint,
-              hintStyle: TextStyle(fontSize: 12),
-              prefixIcon: Padding(
-                padding: EdgeInsets.only(left: 8, right: 6),
-                child: Icon(Icons.mail_outline, size: 18),
+          decoration: InputDecoration(
+            hintText: _emailHint,
+            hintStyle: const TextStyle(
+              fontSize: 13,
+              color: Color(0xFF5F6368),
+            ),
+            prefixIcon: const Padding(
+              padding: EdgeInsets.only(left: 12, right: 8),
+              child: Icon(
+                Icons.mail_outline,
+                size: 22,
+                color: Color(0xFF5F6368),
               ),
-              prefixIconConstraints: BoxConstraints(minWidth: 30),
-              border: InputBorder.none,
-              isDense: true,
-              contentPadding: EdgeInsets.symmetric(vertical: 10),
+            ),
+            prefixIconConstraints: const BoxConstraints(
+              minWidth: 42,
+              minHeight: 42,
+            ),
+            filled: true,
+            fillColor: _inputBackgroundColor,
+            isDense: true,
+            contentPadding: const EdgeInsets.symmetric(
+              vertical: 12,
+              horizontal: 12,
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(18),
+              borderSide: const BorderSide(
+                color: _inputBorderColor,
+                width: 1.4,
+              ),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(18),
+              borderSide: const BorderSide(
+                color: _inputBorderColor,
+                width: 1.4,
+              ),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(18),
+              borderSide: const BorderSide(
+                color: _albaLightBlue,
+                width: 2,
+              ),
+            ),
+            errorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(18),
+              borderSide: const BorderSide(
+                color: Colors.red,
+                width: 1.4,
+              ),
+            ),
+            focusedErrorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(18),
+              borderSide: const BorderSide(
+                color: Colors.red,
+                width: 2,
+              ),
             ),
           ),
         ),
