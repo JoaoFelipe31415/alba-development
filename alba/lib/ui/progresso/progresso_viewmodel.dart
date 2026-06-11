@@ -411,12 +411,10 @@ class ProgressViewModel extends ChangeNotifier {
         t.contains('cansad')) {
       return 'Cansaço';
     }
-    if (t.contains('faculdade') ||
-        t.contains('universidade') ||
-        t.contains('ufrpe')) {
+    if (t.contains('faculdade') || t.contains('universidade')) {
       return 'Prazos da Faculdade';
     }
-    if (t.contains('negóc') || t.contains('negoc') || t.contains('alba')) {
+    if (t.contains('negóc') || t.contains('negoc')) {
       return 'Demandas do Negócio';
     }
     return 'Outros';
