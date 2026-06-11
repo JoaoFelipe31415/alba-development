@@ -53,9 +53,6 @@ class ProgressDTO {
     return ProgressDataModel(
       completionRate: json['completionRate'] ?? 0,
 
-      // Agora os insights não vêm mais mockados daqui.
-      // Eles serão gerados dinamicamente no ProgressViewModel
-      // pelo AlbaInsightsService.
       insights: json['insights'] != null
           ? (json['insights'] as List)
                 .map(

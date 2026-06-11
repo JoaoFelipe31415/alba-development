@@ -417,18 +417,29 @@ class ProgressScreen extends StatelessWidget {
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: List.generate(7, (index) {
-              const dias = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
-              String mood = viewModel.weeklyMood.length > index
-                  ? viewModel.weeklyMood[index]
-                  : "⚪";
+            children: List.generate(viewModel.weeklyMood.length, (index) {
+              const diasSemana = [
+                "Dom",
+                "Seg",
+                "Ter",
+                "Qua",
+                "Qui",
+                "Sex",
+                "Sáb",
+              ];
+
+              String mood = viewModel.weeklyMood[index];
+
+              String legenda = viewModel.isMensal
+                  ? "Sem ${index + 1}"
+                  : diasSemana[index];
 
               return Column(
                 children: [
                   Text(mood, style: const TextStyle(fontSize: 24)),
                   const SizedBox(height: 8),
                   Text(
-                    dias[index],
+                    legenda,
                     style: const TextStyle(color: Colors.grey, fontSize: 12),
                   ),
                 ],
@@ -738,6 +749,11 @@ class ProgressScreen extends StatelessWidget {
     ProgressDataModel data,
     ProgressViewModel viewModel,
   ) {
+    // ✨ O CÁLCULO FICA AQUI (Fora dos widgets, antes de construir a tela)
+    int maxGargalo = data.bottlenecks.isNotEmpty
+        ? data.bottlenecks.map((e) => e.value).reduce((a, b) => a > b ? a : b)
+        : 0;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -782,8 +798,8 @@ class ProgressScreen extends StatelessWidget {
                           ),
                           const SizedBox(height: 4),
                           _buildCustomProgressBar(
-                            item.value / 3,
-                            const Color(0xFFFF7A00),
+                            maxGargalo > 0 ? (item.value / maxGargalo) : 0.0,
+                            Color(int.parse(item.colorHex)),
                           ),
                         ],
                       ),

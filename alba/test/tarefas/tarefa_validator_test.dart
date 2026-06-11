@@ -26,7 +26,6 @@ void main() {
   });
 
   group('TarefaValidator - Dias', () {
-    // 🔧 BUG FIX: Testes atualizados para usar o segundo parâmetro tipoRecorrencia
     test('deve retornar erro se lista vazia em recorrência personalizada', () {
       final result = TarefaValidator.validateDias(
         [],

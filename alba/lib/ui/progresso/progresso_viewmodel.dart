@@ -54,11 +54,28 @@ class ProgressViewModel extends ChangeNotifier {
     }
 
     if (uid != null) {
-      final dadosJson = await _repository.obterProgresso(uid);
+      String idParaConsulta = uid;
+      try {
+        final userDoc = await FirebaseFirestore.instance
+            .collection('Users')
+            .where('uid', isEqualTo: uid)
+            .get();
+
+        if (userDoc.docs.isNotEmpty) {
+          final userData = userDoc.docs.first.data();
+          if (userData['phone'] != null) {
+            idParaConsulta = userData['phone'].toString();
+          }
+        }
+      } catch (e) {
+        print("Erro ao converter UID para Telefone: $e");
+      }
+
+      final dadosJson = await _repository.obterProgresso(idParaConsulta);
       data = ProgressDTO.fromFirestore(dadosJson ?? {});
 
       final monitoramentoPeriodo = await _repository.obterMonitoramentoPorData(
-        uid,
+        idParaConsulta,
         dataInicio,
         dataFim,
       );
@@ -66,12 +83,7 @@ class ProgressViewModel extends ChangeNotifier {
       final todasAsTarefas = await _tarefasRepository.obterTarefas();
 
       _processarEmojis(monitoramentoPeriodo, dataInicio);
-
-      _processarGargalos(
-        monitoramentoPeriodo,
-        dataInicio,
-        dataFim,
-      );
+      _processarGargalos(monitoramentoPeriodo, dataInicio, dataFim);
 
       final tarefasConcluidas = todasAsTarefas
           .where((tarefa) => tarefa.status.toLowerCase().trim() == 'concluida')
@@ -84,18 +96,8 @@ class ProgressViewModel extends ChangeNotifier {
         dataFim,
       );
 
-      _processarProdutividadePorPeriodo(
-        todasAsTarefas,
-        dataInicio,
-        dataFim,
-      );
-
-      _processarEstatisticasDescanso(
-        monitoramentoPeriodo,
-        dataInicio,
-        dataFim,
-      );
-
+      _processarProdutividadePorPeriodo(todasAsTarefas, dataInicio, dataFim);
+      _processarEstatisticasDescanso(monitoramentoPeriodo, dataInicio, dataFim);
       _gerarInsightsDaAlba(todasAsTarefas);
     } else {
       data = ProgressDTO.fromFirestore({});
@@ -124,10 +126,13 @@ class ProgressViewModel extends ChangeNotifier {
 
   void _processarEmojis(
     List<Map<String, dynamic>> monitoramento,
-    DateTime inicioSemana,
+    DateTime dataInicio,
   ) {
-    weeklyMood = List.generate(7, (_) => '⚪');
+    int tamanhoLista = isMensal ? 4 : 7;
+    weeklyMood = List.generate(tamanhoLista, (_) => '⚪');
     emojiDestaque = '⚪';
+
+    List<List<String>> humoresPorSemanaDoMes = List.generate(4, (_) => []);
 
     for (var doc in monitoramento) {
       if (doc['data'] != null) {
@@ -141,26 +146,62 @@ class ProgressViewModel extends ChangeNotifier {
           continue;
         }
 
-        if (dataResposta.isAfter(inicioSemana) ||
-            dataResposta.isAtSameMomentAs(inicioSemana)) {
-          int indiceDia = dataResposta.weekday % 7;
-          weeklyMood[indiceDia] = _mapMood(doc['sentimento'] ?? "");
+        if (dataResposta.isAfter(dataInicio) ||
+            dataResposta.isAtSameMomentAs(dataInicio)) {
+          String emojiEncontrado = _mapMood(doc['sentimento'] ?? "");
+          if (emojiEncontrado == '⚪') continue;
+
+          if (isMensal) {
+            int diferencaDias = dataResposta.difference(dataInicio).inDays;
+            int indexSemana = diferencaDias ~/ 7;
+
+            if (indexSemana > 3) indexSemana = 3;
+            if (indexSemana < 0) indexSemana = 0;
+
+            humoresPorSemanaDoMes[indexSemana].add(emojiEncontrado);
+          } else {
+            int indiceDia = dataResposta.weekday % 7;
+            weeklyMood[indiceDia] = emojiEncontrado;
+          }
         }
       }
     }
-
+    if (isMensal) {
+      for (int i = 0; i < 4; i++) {
+        final listaDaSemana = humoresPorSemanaDoMes[i];
+        if (listaDaSemana.isNotEmpty) {
+          final contagemSemanal = <String, int>{};
+          for (final emoji in listaDaSemana) {
+            contagemSemanal[emoji] = (contagemSemanal[emoji] ?? 0) + 1;
+          }
+          weeklyMood[i] = contagemSemanal.entries
+              .reduce((a, b) => a.value >= b.value ? a : b)
+              .key;
+        }
+      }
+    }
     if (weeklyMood.any((emoji) => emoji != "⚪")) {
-      final contagem = <String, int>{};
+      final contagemGeral = <String, int>{};
 
-      for (final emoji in weeklyMood) {
-        if (emoji != "⚪") {
-          contagem[emoji] = (contagem[emoji] ?? 0) + 1;
+      if (isMensal) {
+        for (var lista in humoresPorSemanaDoMes) {
+          for (var emoji in lista) {
+            contagemGeral[emoji] = (contagemGeral[emoji] ?? 0) + 1;
+          }
+        }
+      } else {
+        for (final emoji in weeklyMood) {
+          if (emoji != "⚪") {
+            contagemGeral[emoji] = (contagemGeral[emoji] ?? 0) + 1;
+          }
         }
       }
 
-      emojiDestaque = contagem.entries
-          .reduce((a, b) => a.value >= b.value ? a : b)
-          .key;
+      if (contagemGeral.isNotEmpty) {
+        emojiDestaque = contagemGeral.entries
+            .reduce((a, b) => a.value >= b.value ? a : b)
+            .key;
+      }
     }
   }
 
@@ -204,9 +245,9 @@ class ProgressViewModel extends ChangeNotifier {
       for (var tarefa in tarefas) {
         final dentroDoPeriodo =
             (tarefa.dataCriacao.isAfter(dataInicio) ||
-                    tarefa.dataCriacao.isAtSameMomentAs(dataInicio)) &&
-                (tarefa.dataCriacao.isBefore(dataFim) ||
-                    tarefa.dataCriacao.isAtSameMomentAs(dataFim));
+                tarefa.dataCriacao.isAtSameMomentAs(dataInicio)) &&
+            (tarefa.dataCriacao.isBefore(dataFim) ||
+                tarefa.dataCriacao.isAtSameMomentAs(dataFim));
 
         if (dentroDoPeriodo) {
           int diferencaDias = tarefa.dataCriacao.difference(dataInicio).inDays;
@@ -243,9 +284,9 @@ class ProgressViewModel extends ChangeNotifier {
       for (var tarefa in tarefas) {
         bool dentroDoPeriodo =
             (tarefa.dataCriacao.isAfter(dataInicio) ||
-                    tarefa.dataCriacao.isAtSameMomentAs(dataInicio)) &&
-                (tarefa.dataCriacao.isBefore(dataFim) ||
-                    tarefa.dataCriacao.isAtSameMomentAs(dataFim));
+                tarefa.dataCriacao.isAtSameMomentAs(dataInicio)) &&
+            (tarefa.dataCriacao.isBefore(dataFim) ||
+                tarefa.dataCriacao.isAtSameMomentAs(dataFim));
 
         if (dentroDoPeriodo) {
           int indexDia = tarefa.dataCriacao.weekday % 7;
@@ -297,6 +338,7 @@ class ProgressViewModel extends ChangeNotifier {
       'Cansaço': 0,
       'Prazos da Faculdade': 0,
       'Demandas do Negócio': 0,
+      'Outros': 0,
     };
 
     for (var doc in documentos) {
@@ -317,7 +359,7 @@ class ProgressViewModel extends ChangeNotifier {
         if (depoisDoInicio && antesDoFim) {
           String? gargaloBruto = doc['gargaloPrincipal'];
 
-          if (gargaloBruto != null) {
+          if (gargaloBruto != null && gargaloBruto.trim().isNotEmpty) {
             String chave = _normalizarGargalo(gargaloBruto);
 
             if (contador.containsKey(chave)) {
@@ -350,31 +392,34 @@ class ProgressViewModel extends ChangeNotifier {
         return "0xFF3B82F6";
       case 'Demandas do Negócio':
         return "0xFF10B981";
+      case 'Outros':
+        return "0xFF6B7280";
       default:
         return "0xFF6B7280";
     }
   }
 
   String _normalizarGargalo(String texto) {
-    final t = texto.toLowerCase();
+    final t = texto.toLowerCase().trim();
 
+    if (t.isEmpty) return '';
     if (t.contains('procrastinação') || t.contains('procrastinacao')) {
       return 'Procrastinação';
     }
-
-    if (t.contains('cansaço') || t.contains('cansaco') || t.contains('cansad')) {
+    if (t.contains('cansaço') ||
+        t.contains('cansaco') ||
+        t.contains('cansad')) {
       return 'Cansaço';
     }
-
-    if (t.contains('faculdade') || t.contains('universidade')) {
+    if (t.contains('faculdade') ||
+        t.contains('universidade') ||
+        t.contains('ufrpe')) {
       return 'Prazos da Faculdade';
     }
-
-    if (t.contains('negóc') || t.contains('negoc')) {
+    if (t.contains('negóc') || t.contains('negoc') || t.contains('alba')) {
       return 'Demandas do Negócio';
     }
-
-    return '';
+    return 'Outros';
   }
 
   String get feedbackGargalos {
@@ -398,9 +443,11 @@ class ProgressViewModel extends ChangeNotifier {
       "Procrastinação":
           "Identifiquei que a procrastinação apareceu bastante. Tente a técnica Pomodoro para quebrar a inércia nas tarefas.",
       "Prazos da Faculdade":
-          "Os prazos da faculdade estão apertando! Vamos priorizar o que é urgente para aliviar essa pressão.",
+          "Los prazos da faculdade estão apertando! Vamos priorizar o que é urgente para aliviar essa pressão.",
       "Demandas do Negócio":
           "O crescimento do negócio está gerando muitos gargalos. Que tal organizar os processos para não se sobrecarregar?",
+      "Outros":
+          "Fatores externos ou imprevistos personalizados ganharam destaque nesta semana. Vale a pena refletir sobre o que tirou seu foco.",
     };
 
     return mensagens[maiorGargalo.label] ??
@@ -415,24 +462,37 @@ class ProgressViewModel extends ChangeNotifier {
   ) {
     Set<String> diasUni = {};
     Set<String> diasNeg = {};
-    double totalDescanso = 0;
+    Set<String> diasDescanso = {};
 
     for (var tarefa in tarefas) {
+      if (tarefa.dataInicial == null) continue;
+
+      DateTime dataInicial;
+      if (tarefa.dataInicial is Timestamp) {
+        dataInicial = (tarefa.dataInicial as Timestamp).toDate();
+      } else if (tarefa.dataInicial is DateTime) {
+        dataInicial = tarefa.dataInicial as DateTime;
+      } else {
+        dataInicial =
+            DateTime.tryParse(tarefa.dataInicial.toString()) ?? DateTime.now();
+      }
+
       bool dentroDoPeriodo =
-          (tarefa.dataCriacao.isAfter(dataInicio) ||
-                  tarefa.dataCriacao.isAtSameMomentAs(dataInicio)) &&
-              (tarefa.dataCriacao.isBefore(dataFim) ||
-                  tarefa.dataCriacao.isAtSameMomentAs(dataFim));
+          (dataInicial.isAfter(dataInicio) ||
+              dataInicial.isAtSameMomentAs(dataInicio)) &&
+          (dataInicial.isBefore(dataFim) ||
+              dataInicial.isAtSameMomentAs(dataFim));
 
       if (dentroDoPeriodo) {
         String tag = (tarefa.tag ?? '').toLowerCase().trim();
-
         String diaChave =
-            "${tarefa.dataCriacao.year}-${tarefa.dataCriacao.month}-${tarefa.dataCriacao.day}";
+            "${dataInicial.year}-${dataInicial.month}-${dataInicial.day}";
 
         if (tag.contains('universidade') || tag.contains('faculdade')) {
           diasUni.add(diaChave);
-        } else if (tag.contains('negoc') || tag.contains('negóc')) {
+        } else if (tag.contains('negoc') ||
+            tag.contains('negóc') ||
+            tag.contains('negocio')) {
           diasNeg.add(diaChave);
         }
       }
@@ -450,13 +510,15 @@ class ProgressViewModel extends ChangeNotifier {
       if (dataDoc != null) {
         bool dentroDoPeriodoMonit =
             (dataDoc.isAfter(dataInicio) ||
-                    dataDoc.isAtSameMomentAs(dataInicio)) &&
-                (dataDoc.isBefore(dataFim) ||
-                    dataDoc.isAtSameMomentAs(dataFim));
+                dataDoc.isAtSameMomentAs(dataInicio)) &&
+            (dataDoc.isBefore(dataFim) || dataDoc.isAtSameMomentAs(dataFim));
 
         if (dentroDoPeriodoMonit && doc['tempoDescanso'] != null) {
           int minutos = _extrairMinutos(doc['tempoDescanso'].toString());
-          totalDescanso += (minutos / 60);
+          if (minutos > 0) {
+            String diaChave = "${dataDoc.year}-${dataDoc.month}-${dataDoc.day}";
+            diasDescanso.add(diaChave);
+          }
         }
       }
     }
@@ -476,7 +538,7 @@ class ProgressViewModel extends ChangeNotifier {
       ),
       BarDataModel(
         label: "Descanso",
-        value: totalDescanso.round(),
+        value: diasDescanso.length,
         colorHex: "0xFFD946EF",
         attributed: 0,
       ),
@@ -496,9 +558,7 @@ class ProgressViewModel extends ChangeNotifier {
       return "Ainda não identifiquei uma área dominante de foco neste período.";
     }
 
-    final principal = focosComValor.reduce(
-      (a, b) => a.value > b.value ? a : b,
-    );
+    final principal = focosComValor.reduce((a, b) => a.value > b.value ? a : b);
 
     final frases = {
       "Universidade":
@@ -599,7 +659,7 @@ class ProgressViewModel extends ChangeNotifier {
     final frequente = data!.mostFrequentRest;
 
     if (frequente == "Nenhum" || frequente == "30 minutos") {
-      return "😎 Você está se mantendo produtiva, mas com pouco tempo de descanso real. Pequenos ajustes podem melhorar sua energia para a UFRPE e o projeto ALBA!";
+      return "😎 Você está se mantendo produtiva, mas com pouco tempo de descanso real. Pequenos adjustments podem melhorar sua energia para a UFRPE e o projeto ALBA!";
     }
 
     return "⚡ Excelente equilíbrio! Seu descanso está mantendo sua mente afiada, essencial para a sustentabilidade ao longo prazo.";
