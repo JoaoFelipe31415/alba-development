@@ -22,6 +22,18 @@ class AuthRepository {
     }
   }
 
+  Future<bool> verificarConfirmacao() async {
+    User? user = FirebaseAuth.instance.currentUser;
+
+    if (user != null) {
+      await user.reload();
+      user = FirebaseAuth.instance.currentUser;
+
+      if (user != null && user.emailVerified) return true;
+    }
+    return false;
+  }
+
   Future<void> register(CredentialsRegisterDto dto) async {
     try {
       await _auth.createUserWithEmailAndPassword(

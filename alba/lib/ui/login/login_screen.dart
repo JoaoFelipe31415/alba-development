@@ -58,11 +58,17 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  void _listener() {
+  void _listener() async {
     if (context.mounted && viewmodel.isLoggedIn) {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (context) => const HomeScreen()),
-      );
+      if (await viewmodel.verificarConfirmacao()) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (context) => const HomeScreen()),
+        );
+      } else {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Email nao verificado.')));
+      }
     }
 
     if (context.mounted && !viewmodel.isLoggedIn) {

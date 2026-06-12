@@ -21,6 +21,9 @@ class RegisterViewmodel extends ChangeNotifier {
         email: dto.email,
         password: dto.password,
       );
+
+      await result.user?.sendEmailVerification();
+
       if (result.user != null) {
         await _authRepository.saveUserOnFirestore(result.user!.uid, dto);
       }
