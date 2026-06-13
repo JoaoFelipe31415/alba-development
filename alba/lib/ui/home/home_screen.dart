@@ -1,4 +1,5 @@
 import 'package:alba/ui/design_system/theme/app_colors.dart';
+import 'package:alba/ui/menu/menu_screen.dart';
 import 'package:alba/ui/metas/gerenciamento_metas_screen.dart';
 import 'package:alba/ui/progresso/progresso_screen.dart';
 import 'package:alba/ui/progresso/progresso_viewmodel.dart';
@@ -33,7 +34,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     const GerenciamentoTarefasScreen(),
 
-    const _ProximamentScreen(),
+    const MenuScreen(),
   ];
 
   Future<void> _openAlbaWhatsapp() async {
@@ -125,10 +126,7 @@ class _HomeScreenState extends State<HomeScreen> {
             icon: Icon(Icons.check_circle),
             label: 'Tarefas',
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.menu),
-            label: 'Menu',
-          ),
+          BottomNavigationBarItem(icon: Icon(Icons.menu), label: 'Menu'),
         ],
       ),
     );
