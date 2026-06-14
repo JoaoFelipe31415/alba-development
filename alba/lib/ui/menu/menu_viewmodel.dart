@@ -4,14 +4,17 @@ import 'package:flutter/material.dart';
 
 class MenuViewModel extends ChangeNotifier {
   final AuthRepository _authRepository;
+  final FirebaseFirestore _firestore;
 
-  MenuViewModel(this._authRepository);
+  MenuViewModel(
+    this._authRepository, {
+    FirebaseFirestore? firestore,
+  }) : _firestore = firestore ?? FirebaseFirestore.instance;
 
   bool isLoading = false;
   String? errorMessage;
   bool isEditing = false;
 
-  // Mapa de perfil iniciado com dados locais, mas o e-mail será dinâmico
   Map<String, dynamic> perfil = {
     'nome': 'Name',
     'email': '',
@@ -50,55 +53,77 @@ class MenuViewModel extends ChangeNotifier {
     try {
       final usuarioLogado = _authRepository.currentUser;
 
-      if (usuarioLogado != null) {
-        perfil['email'] = usuarioLogado.email ?? '';
+      if (usuarioLogado == null) {
+        throw Exception('Usuário não autenticado.');
+      }
 
-        if (usuarioLogado.phoneNumber != null &&
-            usuarioLogado.phoneNumber!.isNotEmpty) {
-          perfil['telefone'] = usuarioLogado.phoneNumber;
-        } else {
-          perfil['telefone'] =
-              '(81) 99999-9999'; // ✨ Garante que aparece algo no Chrome
-        }
+      final uid = usuarioLogado.uid;
+      final docRef = _firestore.collection('users').doc(uid);
+      final docSnapshot = await docRef.get();
+
+      if (!docSnapshot.exists) {
+        await docRef.set({
+          'nome': usuarioLogado.displayName ?? 'Name',
+          'email': usuarioLogado.email ?? '',
+          'telefone': usuarioLogado.phoneNumber ?? '',
+          'curso': 'Sistemas de Informação',
+          'universidade': 'UFRPE',
+          'periodo': '4º Período',
+          'ramoNegocio': 'Alimentos',
+          'assinatura': {
+            'statusAssinatura': 'Plano ativo',
+            'valorPlano': 'R\$ 39,90',
+            'dataRenovacao': '20/06/2026',
+          },
+          'createdAt': FieldValue.serverTimestamp(),
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+      }
+
+      final updatedDoc = await docRef.get();
+      final data = updatedDoc.data() ?? {};
+
+      perfil = {
+        'nome': data['nome'] ?? 'Name',
+        'email': data['email'] ?? usuarioLogado.email ?? '',
+        'telefone': data['telefone'] ?? usuarioLogado.phoneNumber ?? '',
+        'curso': data['curso'] ?? 'Sistemas de Informação',
+        'universidade': data['universidade'] ?? 'UFRPE',
+        'periodo': data['periodo'] ?? '4º Período',
+        'ramoNegocio': data['ramoNegocio'] ?? 'Alimentos',
+      };
+
+      if (data['assinatura'] != null) {
+        assinatura = Map<String, dynamic>.from(data['assinatura']);
+      } else {
+        assinatura = {
+          'statusAssinatura': 'Plano ativo',
+          'valorPlano': 'R\$ 39,90',
+          'dataRenovacao': '20/06/2026',
+        };
       }
 
       initControllers();
+    } on FirebaseException catch (e) {
+      if (e.code == 'permission-denied') {
+        errorMessage =
+            'Sem permissão para acessar o perfil. Verifique as regras do Firestore.';
+      } else {
+        errorMessage = 'Erro do Firebase ao carregar perfil: ${e.message}';
+      }
     } catch (e) {
-      errorMessage = "Erro ao carregar dados do perfil.";
+      errorMessage = 'Erro ao carregar dados do perfil: $e';
     } finally {
       isLoading = false;
       notifyListeners();
     }
   }
 
-  //   try {
-  //     // ✨ BUSCA O E-MAIL DO BANCO:
-  //     // Acessa o getter do repositório (ex: currentUser, user, ou similar de acordo com a implementação do Romário)
-  //     final usuarioLogado = _authRepository
-  //         .currentUser; // Altere para a propriedade correta do seu AuthRepository se necessário
-
-  //     if (usuarioLogado != null) {
-  //       // Se o objeto de usuário do seu pacote tiver .email, usamos ele
-  //       perfil['email'] = usuarioLogado.email ?? 'usuario@alba.com';
-  //     } else {
-  //       perfil['email'] = 'usuario@alba.com';
-  //     }
-
-  //     // O Romário conectará o repositório de banco de dados (Firestore) para o resto aqui depois
-  //     await Future.delayed(const Duration(milliseconds: 200));
-  //     initControllers();
-  //   } catch (e) {
-  //     errorMessage = "Não foi possível carregar suas informações.";
-  //   } finally {
-  //     isLoading = false;
-  //     notifyListeners();
-  //   }
-  // }
-
   void alternarEdicao() {
     if (!isEditing) {
       initControllers();
     }
+
     isEditing = !isEditing;
     notifyListeners();
   }
@@ -109,22 +134,50 @@ class MenuViewModel extends ChangeNotifier {
     notifyListeners();
 
     try {
-      await Future.delayed(const Duration(milliseconds: 300));
-      perfil['nome'] = nameController.text;
-      perfil['curso'] = cursoController.text;
-      perfil['universidade'] = uniController.text;
-      perfil['periodo'] = periodoController.text;
-      perfil['telefone'] = phoneController.text;
+      final usuarioLogado = _authRepository.currentUser;
+
+      if (usuarioLogado == null) {
+        throw Exception('Usuário não autenticado.');
+      }
+
+      final uid = usuarioLogado.uid;
+
+      final dadosAtualizados = {
+        'nome': nameController.text.trim(),
+        'email': usuarioLogado.email ?? perfil['email'] ?? '',
+        'curso': cursoController.text.trim(),
+        'universidade': uniController.text.trim(),
+        'periodo': periodoController.text.trim(),
+        'telefone': phoneController.text.trim(),
+        'ramoNegocio': perfil['ramoNegocio'] ?? '',
+      };
+
+      await _firestore.collection('users').doc(uid).set({
+        ...dadosAtualizados,
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+
+      perfil = {
+        ...perfil,
+        ...dadosAtualizados,
+      };
+
       isEditing = false;
+    } on FirebaseException catch (e) {
+      if (e.code == 'permission-denied') {
+        errorMessage =
+            'Sem permissão para salvar o perfil. Verifique as regras do Firestore.';
+      } else {
+        errorMessage = 'Erro do Firebase ao salvar perfil: ${e.message}';
+      }
     } catch (e) {
-      errorMessage = "Não foi possível salvar as alterações.";
+      errorMessage = 'Não foi possível salvar as alterações: $e';
     } finally {
       isLoading = false;
       notifyListeners();
     }
   }
 
-  /// 🛑 CANCELAMENTO DE ASSINATURA (Estruturado para o Romário plugar o Back)
   Future<bool> cancelarAssinatura(String motivo, String feedback) async {
     isLoading = true;
     errorMessage = null;
@@ -133,37 +186,46 @@ class MenuViewModel extends ChangeNotifier {
     try {
       final usuarioLogado = _authRepository.currentUser;
 
-      if (usuarioLogado != null) {
-        final uid = usuarioLogado.uid;
-
-        /* TODO (Romário): Código de conexão com o banco aqui:
-          
-          // 1. Atualiza o status do usuário no Firestore para cancelado
-          await FirebaseFirestore.instance.collection('usuarios').doc(uid).update({
-            'statusAssinatura': 'cancelado',
-            'dataCancelamento': DateTime.now().toIso8601String(),
-          });
-
-          // 2. Registra o feedback em uma coleção de métricas para o time de negócios
-          await FirebaseFirestore.instance.collection('feedbacks_cancelamento').add({
-            'userId': uid,
-            'motivo': motivo,
-            'feedbackAdicional': feedback,
-            'data': DateTime.now().toIso8601String(),
-          });
-        */
-
-        // Simulando a resposta do servidor/banco de dados
-        await Future.delayed(const Duration(seconds: 1));
-
-        // Atualiza o estado da assinatura localmente para a UI sumir com o plano ativo
-        assinatura = null;
-        return true; // Sucesso
+      if (usuarioLogado == null) {
+        throw Exception('Usuário não autenticado.');
       }
-      throw Exception("Usuário não autenticado.");
+
+      final uid = usuarioLogado.uid;
+
+      await _firestore.collection('users').doc(uid).set({
+        'assinatura': {
+          'statusAssinatura': 'Plano cancelado',
+          'valorPlano': assinatura?['valorPlano'] ?? 'R\$ 39,90',
+          'dataRenovacao': assinatura?['dataRenovacao'] ?? '',
+          'dataCancelamento': FieldValue.serverTimestamp(),
+        },
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+
+      await _firestore.collection('feedbacks_cancelamento').add({
+        'userId': uid,
+        'email': usuarioLogado.email ?? '',
+        'motivo': motivo,
+        'feedbackAdicional': feedback,
+        'data': FieldValue.serverTimestamp(),
+      });
+
+      assinatura = null;
+
+      return true;
+    } on FirebaseException catch (e) {
+      if (e.code == 'permission-denied') {
+        errorMessage =
+            'Sem permissão para cancelar assinatura. Verifique as regras do Firestore.';
+      } else {
+        errorMessage =
+            'Erro do Firebase ao processar cancelamento: ${e.message}';
+      }
+
+      return false;
     } catch (e) {
-      errorMessage = "Não foi possível processar o cancelamento: $e";
-      return false; // Falhou
+      errorMessage = 'Não foi possível processar o cancelamento: $e';
+      return false;
     } finally {
       isLoading = false;
       notifyListeners();
