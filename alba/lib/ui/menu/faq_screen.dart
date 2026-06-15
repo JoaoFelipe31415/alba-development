@@ -11,42 +11,45 @@ class FaqScreen extends StatefulWidget {
 class _FaqScreenState extends State<FaqScreen> {
   final TextEditingController _searchController = TextEditingController();
 
-  // ✨ Lista estática de perguntas e respostas do ALBA
   final List<Map<String, String>> _faqOriginal = [
+    {
+      'pergunta': 'O que é o ALBA?',
+      'resposta':
+          'O ALBA é um ecossistema projetado para facilitar a vida do estudante empreendedor. Através de automações inteligentes e ferramentas integradas, ajudamos universitários a gerenciar seus negócios com eficiência, permitindo equilibrar a rotina acadêmica com o crescimento do seu próprio empreendimento.',
+    },
     {
       'pergunta': 'Como funciona o acompanhamento de metas do ALBA?',
       'resposta':
-          'O ALBA ajuda você a organizar sua jornada acadêmica e profissional. Na tela inicial, você pode definir metas diárias ou semanais, criar tarefas específicas e acompanhar a evolução do seu desempenho através de gráficos simples.',
+          'O ALBA ajuda você a equilibrar sua jornada acadêmica e profissional de forma integrada. O monitoramento de suas metas e tarefas acontece tanto no aplicativo quanto diretamente no seu WhatsApp, através da nossa assistente virtual, a Allbinha. Na tela inicial do app, você gerencia suas prioridades, cria tarefas específicas e acompanha a evolução do seu desempenho através de gráficos simples e intuitivos.',
     },
     {
       'pergunta': 'Como posso alterar meus dados acadêmicos?',
       'resposta':
-          'Basta acessar o Menu, clicar no seu card de Perfil e selecionar "+ Mais informações". Lá você poderá atualizar sua universidade, curso, período atual e o ramo de negócio universitário.',
+          'Basta acessar o Menu, expandir o seu card de Perfil e selecionar "Mais informações". Lá você poderá atualizar sua universidade, curso, período atual e o ramo do seu negócio.',
     },
     {
-      'pergunta': 'Quais são as formas de pagamento aceitas no plano?',
+      'pergunta': 'Quais são as formas de pagamento aceitas?',
       'resposta':
-          'Atualmente aceitamos pagamentos via Pix e cartões de crédito. A renovação do plano ativo é automática a cada mês.',
+          'Atualmente aceitamos pagamentos via Pix e cartões de crédito. A renovação da assinatura é automática a cada mês.',
     },
     {
       'pergunta': 'Como faço para cancelar minha assinatura?',
       'resposta':
-          'Você pode solicitar o cancelamento diretamente pela aba "Plano e Assinatura" ou entrando em contato com o nosso suporte pelo e-mail suporte@albaapp.com.br.',
+          'Você pode solicitar o cancelamento a qualquer momento diretamente pela aba "Plano e Assinatura", ou entrando em contato com o nosso suporte pelo e-mail suporte@albaapp.com.br.',
     },
     {
       'pergunta': 'O aplicativo funciona offline?',
       'resposta':
-          'Algumas funções de visualização de metas salvas localmente funcionam offline, mas para sincronizar suas tarefas no banco de dados e atualizar o perfil é necessária uma conexão com a internet.',
+          'Algumas funções de visualização de metas e tarefas salvas localmente funcionam offline, mas para sincronizar suas atualizações no banco de dados e interagir com a Allbinha é necessária uma conexão com a internet.',
     },
   ];
 
-  // Lista que será exibida e filtrada na tela
   List<Map<String, String>> _faqFiltrado = [];
 
   @override
   void initState() {
     super.initState();
-    _faqFiltrado = _faqOriginal; // Inicializa mostrando todas as perguntas
+    _faqFiltrado = _faqOriginal;
   }
 
   void _filtrarPerguntas(String query) {
@@ -141,8 +144,6 @@ class _FaqScreenState extends State<FaqScreen> {
               ),
             ),
           ),
-
-          // 📜 Lista de Itens do FAQ
           Expanded(
             child: _faqFiltrado.isEmpty
                 ? Center(
@@ -169,7 +170,6 @@ class _FaqScreenState extends State<FaqScreen> {
                           ),
                         ),
                         child: Theme(
-                          // Remove as bordas amarelas estranhas que o ExpansionTile coloca por padrão
                           data: Theme.of(
                             context,
                           ).copyWith(dividerColor: Colors.transparent),

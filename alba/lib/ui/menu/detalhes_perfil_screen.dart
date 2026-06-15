@@ -13,10 +13,8 @@ class DetalhesPerfilScreen extends StatefulWidget {
 class _DetalhesPerfilScreenState extends State<DetalhesPerfilScreen> {
   final MenuViewModel _viewModel = injector.get<MenuViewModel>();
 
-  // Controle local para o Dropdown de Negócio/Empreendedorismo
   String _ramoSelecionado = 'Alimentos';
 
-  // Lista de ramos que fazem total sentido para universitários gerarem renda extra
   final List<String> _ramosNegocio = [
     'Alimentos',
     'Artesanato',
@@ -38,8 +36,8 @@ class _DetalhesPerfilScreenState extends State<DetalhesPerfilScreen> {
   void initState() {
     super.initState();
     _viewModel.initControllers();
-    // Inicia com o que estiver salvo no viewmodel ou o padrão
-    if (_viewModel.perfil['ramoNegocio'] != null) {
+    if (_viewModel.perfil['ramoNegocio'] != null &&
+        _viewModel.perfil['ramoNegocio'].toString().isNotEmpty) {
       _ramoSelecionado = _viewModel.perfil['ramoNegocio'];
     }
   }
@@ -49,6 +47,10 @@ class _DetalhesPerfilScreenState extends State<DetalhesPerfilScreen> {
     return ListenableBuilder(
       listenable: _viewModel,
       builder: (context, _) {
+        if (!_viewModel.isEditing && _viewModel.perfil['ramoNegocio'] != null) {
+          _ramoSelecionado = _viewModel.perfil['ramoNegocio'];
+        }
+
         return Scaffold(
           backgroundColor: const Color(0xFFF9FAFB),
           appBar: AppBar(
@@ -67,7 +69,9 @@ class _DetalhesPerfilScreenState extends State<DetalhesPerfilScreen> {
                 color: context.colors.azulAlba,
               ),
               onPressed: () {
-                if (_viewModel.isEditing) _viewModel.alternarEdicao();
+                if (_viewModel.isEditing) {
+                  _viewModel.alternarEdicao();
+                }
                 Navigator.pop(context);
               },
             ),
@@ -95,7 +99,6 @@ class _DetalhesPerfilScreenState extends State<DetalhesPerfilScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Header com Foto e Nome Centralizado
                 Center(
                   child: Column(
                     children: [
@@ -119,12 +122,13 @@ class _DetalhesPerfilScreenState extends State<DetalhesPerfilScreen> {
                           color: context.colors.azulAlba,
                         ),
                       ),
+                      const SizedBox(height: 4),
                       Text(
-                        _viewModel.perfil['email'] ?? '',
+                        _viewModel.telefoneFormatado,
                         style: TextStyle(
-                          color: Colors.grey.shade600,
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
+                          color: Colors.grey.shade600,
                         ),
                       ),
                     ],
@@ -132,7 +136,6 @@ class _DetalhesPerfilScreenState extends State<DetalhesPerfilScreen> {
                 ),
                 const SizedBox(height: 32),
 
-                // Card Principal de Dados
                 Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
@@ -158,14 +161,42 @@ class _DetalhesPerfilScreenState extends State<DetalhesPerfilScreen> {
                           _viewModel.nameController,
                         ),
                         _buildInputField(
-                          "Telefone Celular",
+                          "Telefone Celular (Não modificável)",
                           _viewModel.phoneController,
+                          habilitado: false,
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 18.0),
+                          child: TextFormField(
+                            initialValue: _viewModel.perfil['email'],
+                            style: TextStyle(
+                              color: context.colors.azulAlba,
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            decoration: InputDecoration(
+                              labelText: "E-mail",
+                              labelStyle: TextStyle(
+                                color: Colors.grey.shade600,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 14,
+                              ),
+                            ),
+                            onChanged: (novoEmail) {
+                              _viewModel.perfil['email'] = novoEmail.trim();
+                            },
+                          ),
                         ),
                         _buildInputField("Curso", _viewModel.cursoController),
                         _buildInputField(
                           "Universidade / Faculdade",
                           _viewModel.uniController,
                         ),
+
                         Padding(
                           padding: const EdgeInsets.only(bottom: 20.0),
                           child: Column(
@@ -181,15 +212,14 @@ class _DetalhesPerfilScreenState extends State<DetalhesPerfilScreen> {
                               ),
                               const SizedBox(height: 6),
                               DropdownButtonFormField<String>(
-                                // Define o valor inicial baseado no que está no controller ou padrão
                                 value:
                                     _periodosDisponiveis.contains(
                                       _viewModel.periodoController.text,
                                     )
                                     ? _viewModel.periodoController.text
                                     : '1º Período',
-                                decoration: InputDecoration(
-                                  contentPadding: const EdgeInsets.symmetric(
+                                decoration: const InputDecoration(
+                                  contentPadding: EdgeInsets.symmetric(
                                     horizontal: 16,
                                     vertical: 12,
                                   ),
@@ -222,7 +252,6 @@ class _DetalhesPerfilScreenState extends State<DetalhesPerfilScreen> {
                           ),
                         ),
 
-                        // O Clicador / Dropdown de Ramos de Negócio
                         Padding(
                           padding: const EdgeInsets.only(bottom: 20.0),
                           child: Column(
@@ -238,9 +267,11 @@ class _DetalhesPerfilScreenState extends State<DetalhesPerfilScreen> {
                               ),
                               const SizedBox(height: 6),
                               DropdownButtonFormField<String>(
-                                value: _ramoSelecionado,
-                                decoration: InputDecoration(
-                                  contentPadding: const EdgeInsets.symmetric(
+                                value: _ramosNegocio.contains(_ramoSelecionado)
+                                    ? _ramoSelecionado
+                                    : 'Alimentos',
+                                decoration: const InputDecoration(
+                                  contentPadding: EdgeInsets.symmetric(
                                     horizontal: 16,
                                     vertical: 12,
                                   ),
@@ -273,34 +304,62 @@ class _DetalhesPerfilScreenState extends State<DetalhesPerfilScreen> {
                         ),
 
                         const SizedBox(height: 12),
-                        // Botão Salvar
+
                         SizedBox(
                           width: double.infinity,
                           height: 52,
-                          child: ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: context.colors.azulAlba,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14),
-                              ),
-                            ),
-                            onPressed: () async {
-                              _viewModel.perfil['ramoNegocio'] =
-                                  _ramoSelecionado;
-                              await _viewModel.salvarPerfil();
-                            },
-                            child: Text(
-                              "Salvar Alterações",
-                              style: TextStyle(
-                                color: context.colors.whiteColor,
-                                fontWeight: FontWeight.w900,
-                                fontSize: 16,
-                              ),
-                            ),
-                          ),
+                          child: _viewModel.isLoading
+                              ? Center(
+                                  child: CircularProgressIndicator(
+                                    color: context.colors.azulAlba,
+                                  ),
+                                )
+                              : ElevatedButton(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: context.colors.azulAlba,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                  ),
+                                  onPressed: () async {
+                                    _viewModel.perfil['ramoNegocio'] =
+                                        _ramoSelecionado;
+
+                                    if (_viewModel
+                                        .periodoController
+                                        .text
+                                        .isEmpty) {
+                                      _viewModel.periodoController.text =
+                                          '1º Período';
+                                    }
+
+                                    await _viewModel.salvarPerfil();
+
+                                    if (_viewModel.errorMessage == null &&
+                                        mounted) {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                            "Alterações salvas com sucesso!",
+                                          ),
+                                          backgroundColor: Colors.green,
+                                        ),
+                                      );
+                                    }
+                                  },
+                                  child: Text(
+                                    "Salvar Alterações",
+                                    style: TextStyle(
+                                      color: context.colors.whiteColor,
+                                      fontWeight: FontWeight.w900,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                ),
                         ),
                         const SizedBox(height: 10),
-                        // Botão Cancelar
                         SizedBox(
                           width: double.infinity,
                           child: TextButton(
@@ -315,10 +374,13 @@ class _DetalhesPerfilScreenState extends State<DetalhesPerfilScreen> {
                           ),
                         ),
                       ] else ...[
-                        // Modo de Leitura Lindo e Limpo
                         _buildItemInfo(
                           "Telefone de Contato",
-                          _viewModel.perfil['telefone'],
+                          _viewModel.telefoneFormatado,
+                        ),
+                        _buildItemInfo(
+                          "E-mail de Acesso",
+                          _viewModel.perfil['email'],
                         ),
                         _buildItemInfo(
                           "Curso Universitário",
@@ -331,7 +393,7 @@ class _DetalhesPerfilScreenState extends State<DetalhesPerfilScreen> {
                         _buildItemInfo("Período", _viewModel.perfil['periodo']),
                         _buildItemInfo(
                           "Segmento de Negócio / Renda Extra",
-                          _ramoSelecionado,
+                          _viewModel.perfil['ramoNegocio'],
                         ),
                       ],
                     ],
@@ -376,18 +438,25 @@ class _DetalhesPerfilScreenState extends State<DetalhesPerfilScreen> {
     );
   }
 
-  Widget _buildInputField(String label, TextEditingController controller) {
+  Widget _buildInputField(
+    String label,
+    TextEditingController controller, {
+    bool habilitado = true,
+  }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 18.0),
       child: TextField(
         controller: controller,
+        enabled: habilitado,
         style: TextStyle(
-          color: context.colors.azulAlba,
+          color: habilitado ? context.colors.azulAlba : Colors.grey.shade500,
           fontSize: 14,
           fontWeight: FontWeight.bold,
         ),
         decoration: InputDecoration(
           labelText: label,
+          filled: !habilitado,
+          fillColor: habilitado ? Colors.transparent : Colors.grey.shade100,
           labelStyle: TextStyle(
             color: Colors.grey.shade600,
             fontSize: 13,

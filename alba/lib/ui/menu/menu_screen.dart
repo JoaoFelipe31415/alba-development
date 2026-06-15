@@ -24,7 +24,7 @@ class _MenuScreenState extends State<MenuScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _viewModel.carregarDadosUsuario();
+      _viewModel.escutarDadosUsuario();
     });
   }
 
@@ -117,7 +117,6 @@ class _MenuScreenState extends State<MenuScreen> {
     );
   }
 
-  /// 👤 CARD DE PERFIL (OTIMIZADO - IGUAL AOS OUTROS)
   Widget _buildSeccaoPerfil() {
     return GestureDetector(
       onTap: () {
@@ -135,7 +134,6 @@ class _MenuScreenState extends State<MenuScreen> {
           children: [
             Row(
               children: [
-                // ✨ Tamanho do avatar fixo em 28 para evitar recalculação de layout na animação
                 CircleAvatar(
                   radius: 28,
                   backgroundColor: context.colors.azulAlba.withOpacity(0.08),
@@ -150,7 +148,6 @@ class _MenuScreenState extends State<MenuScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // ✨ Removido o AnimatedDefaultTextStyle lento. Texto direto e limpo:
                       Text(
                         _viewModel.perfil['nome'] ?? '',
                         style: TextStyle(
@@ -226,9 +223,15 @@ class _MenuScreenState extends State<MenuScreen> {
     );
   }
 
-  /// 💳 CARD DE ASSINATURA
   Widget _buildSeccaoAssinatura() {
     final temAssinatura = _viewModel.assinatura != null;
+
+    final bool isCancelado =
+        temAssinatura &&
+        _viewModel.assinatura!['statusAssinatura']
+            .toString()
+            .toLowerCase()
+            .contains('cancelado');
 
     return GestureDetector(
       onTap: () {
@@ -268,7 +271,7 @@ class _MenuScreenState extends State<MenuScreen> {
             ),
             if (_isAssinaturaExpanded) ...[
               const Divider(height: 24),
-              if (!temAssinatura)
+              if (!temAssinatura) ...[
                 const Text(
                   "Você não possui assinatura ativa.",
                   style: TextStyle(
@@ -276,8 +279,31 @@ class _MenuScreenState extends State<MenuScreen> {
                     fontStyle: FontStyle.italic,
                     fontSize: 14,
                   ),
-                )
-              else ...[
+                ),
+                const SizedBox(height: 14),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () async {
+                      await _viewModel.activarAssinaturaTeste();
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: context.colors.focusColor,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                    child: const Text(
+                      "Ativar Assinatura (Simular Jira)",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+              ] else ...[
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -287,7 +313,11 @@ class _MenuScreenState extends State<MenuScreen> {
                         vertical: 5,
                       ),
                       decoration: BoxDecoration(
-                        color: context.colors.neonGreen.withOpacity(0.12),
+                        color: isCancelado
+                            ? const Color(
+                                0xFFFFECEC,
+                              ) // Vermelho claro para cancelado
+                            : context.colors.neonGreen.withOpacity(0.12),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
@@ -295,7 +325,9 @@ class _MenuScreenState extends State<MenuScreen> {
                             .toString()
                             .toUpperCase(),
                         style: TextStyle(
-                          color: context.colors.azulAlba,
+                          color: isCancelado
+                              ? const Color(0xFFFF0004)
+                              : context.colors.azulAlba,
                           fontWeight: FontWeight.w900,
                           fontSize: 11,
                           letterSpacing: 0.5,
@@ -303,10 +335,10 @@ class _MenuScreenState extends State<MenuScreen> {
                       ),
                     ),
                     Text(
-                      _viewModel.assinatura!['valorPlano'],
+                      "Valor: ${_viewModel.assinatura!['valorPlano']}",
                       style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w900,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
                         color: context.colors.azulAlba,
                       ),
                     ),
@@ -314,42 +346,86 @@ class _MenuScreenState extends State<MenuScreen> {
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  "Renovação em: ${_viewModel.assinatura!['dataRenovacao']}",
+                  isCancelado
+                      ? "Acesso disponível até o fim do ciclo."
+                      : "Renovação em: ${_viewModel.assinatura!['dataRenovacao']}",
                   style: TextStyle(
                     color: Colors.grey.shade600,
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 16),
                 const Divider(height: 1),
-                const SizedBox(height: 10),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const CancelarPlanoScreen(),
+                const SizedBox(height: 14),
+                if (isCancelado) ...[
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: ElevatedButton.icon(
+                      onPressed: () async {
+                        final sucesso = await _viewModel.reativarAssinatura();
+                        if (sucesso && mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                "Sua assinatura foi reativada com sucesso! 🚀",
+                              ),
+                              backgroundColor: Colors.green,
+                            ),
+                          );
+                        }
+                      },
+                      icon: const Icon(
+                        Icons.flash_on_rounded,
+                        color: Colors.white,
+                        size: 18,
+                      ),
+                      label: const Text(
+                        "Assinar Plano (Reativar)",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 15,
                         ),
-                      );
-                    },
-                    style: TextButton.styleFrom(
-                      padding: EdgeInsets.zero,
-                      minimumSize: Size.zero,
-                    ),
-                    child: const Text(
-                      "Cancelar assinatura",
-                      style: TextStyle(
-                        color: Colors.grey,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13,
-                        decoration: TextDecoration.underline,
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: context.colors.focusColor,
+                        elevation: 2,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
                     ),
                   ),
-                ),
+                ] else ...[
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const CancelarPlanoScreen(),
+                          ),
+                        );
+                      },
+                      style: TextButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                        minimumSize: Size.zero,
+                      ),
+                      child: const Text(
+                        "Cancelar assinatura",
+                        style: TextStyle(
+                          color: Colors.grey,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                          decoration: TextDecoration.underline,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ],
             ],
           ],
@@ -358,7 +434,6 @@ class _MenuScreenState extends State<MenuScreen> {
     );
   }
 
-  /// 🛠️ CARD DE SUPORTE E FAQ
   Widget _buildSeccaoSuporte() {
     return GestureDetector(
       onTap: () {

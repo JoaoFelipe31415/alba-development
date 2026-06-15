@@ -45,7 +45,6 @@ class _CancelarPlanoScreenState extends State<CancelarPlanoScreen> {
 
     if (mounted) {
       if (sucesso) {
-        // Mostra mensagem de sucesso e volta para o Menu atualizado
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text("Sua assinatura foi cancelada com sucesso."),
@@ -54,7 +53,6 @@ class _CancelarPlanoScreenState extends State<CancelarPlanoScreen> {
         );
         Navigator.pop(context);
       } else {
-        // Mostra o erro caso dê falha
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(_viewModel.errorMessage ?? "Erro ao cancelar plano."),
@@ -108,7 +106,6 @@ class _CancelarPlanoScreenState extends State<CancelarPlanoScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // ⚠️ Card de Alerta de Perda de Benefícios
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(16),
@@ -161,8 +158,6 @@ class _CancelarPlanoScreenState extends State<CancelarPlanoScreen> {
                   ),
                 ),
                 const SizedBox(height: 12),
-
-                // 🔘 Lista de Motivos (Radio List)
                 Column(
                   children: _motivos.map((motivo) {
                     return Container(
@@ -208,8 +203,6 @@ class _CancelarPlanoScreenState extends State<CancelarPlanoScreen> {
                   ),
                 ),
                 const SizedBox(height: 10),
-
-                // 📝 Campo de Feedback Escrito
                 TextField(
                   controller: _feedbackController,
                   maxLines: 3,
@@ -243,10 +236,7 @@ class _CancelarPlanoScreenState extends State<CancelarPlanoScreen> {
                     ),
                   ),
                 ),
-
                 const SizedBox(height: 32),
-
-                // 🚨 Botão de Confirmação de Cancelamento
                 SizedBox(
                   width: double.infinity,
                   height: 52,
@@ -270,8 +260,6 @@ class _CancelarPlanoScreenState extends State<CancelarPlanoScreen> {
                   ),
                 ),
                 const SizedBox(height: 12),
-
-                // 💚 Botão de Desistir e Continuar Premium
                 SizedBox(
                   width: double.infinity,
                   height: 52,
