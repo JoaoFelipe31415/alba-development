@@ -1,5 +1,6 @@
 import 'package:alba/config/dependencies.dart';
 import 'package:alba/ui/design_system/theme/app_colors.dart';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'menu_viewmodel.dart';
 
@@ -39,6 +40,103 @@ class _DetalhesPerfilScreenState extends State<DetalhesPerfilScreen> {
     if (_viewModel.perfil['ramoNegocio'] != null &&
         _viewModel.perfil['ramoNegocio'].toString().isNotEmpty) {
       _ramoSelecionado = _viewModel.perfil['ramoNegocio'];
+    }
+  }
+
+  void _processarSalvamento() async {
+    _viewModel.perfil['ramoNegocio'] = _ramoSelecionado;
+
+    if (_viewModel.periodoController.text.isEmpty) {
+      _viewModel.periodoController.text = '1º Período';
+    }
+
+    final emailDigitado = _viewModel.emailController.text.trim().toLowerCase();
+    final emailOriginal = (_viewModel.perfil['email'] ?? '')
+        .toString()
+        .trim()
+        .toLowerCase();
+
+    if (emailDigitado != emailOriginal) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) {
+          final senhaController = TextEditingController();
+          return AlertDialog(
+            title: const Text(
+              "Confirme sua Senha",
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  "Para mudar o seu e-mail de login imediatamente, insira sua senha:",
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: senhaController,
+                  obscureText: true,
+                  decoration: const InputDecoration(
+                    labelText: "Senha atual",
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text(
+                  "Cancelar",
+                  style: TextStyle(color: Colors.grey),
+                ),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: context.colors.azulAlba,
+                ),
+                onPressed: () async {
+                  Navigator.pop(context);
+
+                  bool sucesso = await _viewModel.salvarPerfil(
+                    senhaController.text,
+                  );
+                  _exibirResultado(sucesso);
+                },
+                child: const Text(
+                  "Confirmar",
+                  style: TextStyle(color: Colors.white),
+                ),
+              ),
+            ],
+          );
+        },
+      );
+    } else {
+      bool sucesso = await _viewModel.salvarPerfil("");
+      _exibirResultado(sucesso);
+    }
+  }
+
+  void _exibirResultado(bool sucesso) {
+    if (!mounted) return;
+
+    if (sucesso && _viewModel.errorMessage == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Alterações salvas com sucesso!"),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } else if (_viewModel.errorMessage != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_viewModel.errorMessage!),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -107,20 +205,26 @@ class _DetalhesPerfilScreenState extends State<DetalhesPerfilScreen> {
                         backgroundColor: context.colors.azulAlba.withOpacity(
                           0.08,
                         ),
-                        child: Icon(
-                          Icons.person_rounded,
-                          size: 48,
-                          color: context.colors.azulAlba,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        _viewModel.perfil['nome'] ?? '',
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.w900,
-                          color: context.colors.azulAlba,
-                        ),
+                        backgroundImage:
+                            _viewModel.fotoUrl != null &&
+                                _viewModel.fotoUrl!.isNotEmpty
+                            ? MemoryImage(
+                                const Base64Decoder().convert(
+                                  _viewModel.fotoUrl!.contains(',')
+                                      ? _viewModel.fotoUrl!.split(',')[1]
+                                      : _viewModel.fotoUrl!,
+                                ),
+                              )
+                            : null,
+                        child:
+                            _viewModel.fotoUrl != null &&
+                                _viewModel.fotoUrl!.isNotEmpty
+                            ? null
+                            : Icon(
+                                Icons.person_rounded,
+                                size: 48,
+                                color: context.colors.azulAlba,
+                              ),
                       ),
                       const SizedBox(height: 4),
                       Text(
@@ -156,19 +260,37 @@ class _DetalhesPerfilScreenState extends State<DetalhesPerfilScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       if (_viewModel.isEditing) ...[
-                        _buildInputField(
-                          "Nome Completo",
-                          _viewModel.nameController,
-                        ),
-                        _buildInputField(
-                          "Telefone Celular (Não modificável)",
-                          _viewModel.phoneController,
-                          habilitado: false,
+                        _buildInputField("Nome", _viewModel.nameController),
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 18.0),
+                          child: TextFormField(
+                            initialValue: _viewModel.telefoneFormatado,
+                            enabled: false,
+                            style: TextStyle(
+                              color: Colors.grey.shade500,
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            decoration: InputDecoration(
+                              labelText: "Telefone Celular (Não modificável)",
+                              filled: true,
+                              fillColor: Colors.grey.shade100,
+                              labelStyle: TextStyle(
+                                color: Colors.grey.shade600,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 14,
+                              ),
+                            ),
+                          ),
                         ),
                         Padding(
                           padding: const EdgeInsets.only(bottom: 18.0),
                           child: TextFormField(
-                            initialValue: _viewModel.perfil['email'],
+                            controller: _viewModel.emailController,
                             style: TextStyle(
                               color: context.colors.azulAlba,
                               fontSize: 14,
@@ -186,9 +308,6 @@ class _DetalhesPerfilScreenState extends State<DetalhesPerfilScreen> {
                                 vertical: 14,
                               ),
                             ),
-                            onChanged: (novoEmail) {
-                              _viewModel.perfil['email'] = novoEmail.trim();
-                            },
                           ),
                         ),
                         _buildInputField("Curso", _viewModel.cursoController),
@@ -196,7 +315,6 @@ class _DetalhesPerfilScreenState extends State<DetalhesPerfilScreen> {
                           "Universidade / Faculdade",
                           _viewModel.uniController,
                         ),
-
                         Padding(
                           padding: const EdgeInsets.only(bottom: 20.0),
                           child: Column(
@@ -251,7 +369,6 @@ class _DetalhesPerfilScreenState extends State<DetalhesPerfilScreen> {
                             ],
                           ),
                         ),
-
                         Padding(
                           padding: const EdgeInsets.only(bottom: 20.0),
                           child: Column(
@@ -302,9 +419,7 @@ class _DetalhesPerfilScreenState extends State<DetalhesPerfilScreen> {
                             ],
                           ),
                         ),
-
                         const SizedBox(height: 12),
-
                         SizedBox(
                           width: double.infinity,
                           height: 52,
@@ -321,34 +436,7 @@ class _DetalhesPerfilScreenState extends State<DetalhesPerfilScreen> {
                                       borderRadius: BorderRadius.circular(14),
                                     ),
                                   ),
-                                  onPressed: () async {
-                                    _viewModel.perfil['ramoNegocio'] =
-                                        _ramoSelecionado;
-
-                                    if (_viewModel
-                                        .periodoController
-                                        .text
-                                        .isEmpty) {
-                                      _viewModel.periodoController.text =
-                                          '1º Período';
-                                    }
-
-                                    await _viewModel.salvarPerfil();
-
-                                    if (_viewModel.errorMessage == null &&
-                                        mounted) {
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        const SnackBar(
-                                          content: Text(
-                                            "Alterações salvas com sucesso!",
-                                          ),
-                                          backgroundColor: Colors.green,
-                                        ),
-                                      );
-                                    }
-                                  },
+                                  onPressed: _processarSalvamento,
                                   child: Text(
                                     "Salvar Alterações",
                                     style: TextStyle(

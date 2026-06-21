@@ -20,7 +20,7 @@ class _FaqScreenState extends State<FaqScreen> {
     {
       'pergunta': 'Como funciona o acompanhamento de metas do ALBA?',
       'resposta':
-          'O ALBA ajuda você a equilibrar sua jornada acadêmica e profissional de forma integrada. O monitoramento de suas metas e tarefas acontece tanto no aplicativo quanto diretamente no seu WhatsApp, através da nossa assistente virtual, a Allbinha. Na tela inicial do app, você gerencia suas prioridades, cria tarefas específicas e acompanha a evolução do seu desempenho através de gráficos simples e intuitivos.',
+          'O ALBA ajuda você a equilibrar sua jornada acadêmica e profissional de forma integrada. O monitoramento de suas metas e tarefas acontece tanto no aplicativo quanto diretamente no seu WhatsApp, através da nossa assistente virtual, Alba. Na tela inicial do app, é possível monitorar o seu progresso e acompanhar a evolução da sua produtividade através de gráficos simples e intuitivos.',
     },
     {
       'pergunta': 'Como posso alterar meus dados acadêmicos?',

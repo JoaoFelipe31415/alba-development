@@ -37,7 +37,6 @@ class _CancelarPlanoScreenState extends State<CancelarPlanoScreen> {
       return;
     }
 
-    // Chama o método estruturado no ViewModel
     final sucesso = await _viewModel.cancelarAssinatura(
       _motivoSelecionado!,
       _feedbackController.text,

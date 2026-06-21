@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'package:alba/ui/login/login_screen.dart';
 import 'package:alba/config/dependencies.dart';
 import 'cancelar_plano_screen.dart';
 import 'faq_screen.dart';
@@ -20,6 +22,21 @@ class _MenuScreenState extends State<MenuScreen> {
   bool _isAssinaturaExpanded = false;
   bool _isSuporteExpanded = false;
 
+  ImageProvider? _extrairImagemAvatar(String fotoPerfil) {
+    if (fotoPerfil.isEmpty) return null;
+
+    if (fotoPerfil.startsWith('data:image')) {
+      try {
+        final stringPuraBase64 = fotoPerfil.split(',')[1];
+        return MemoryImage(base64Decode(stringPuraBase64));
+      } catch (_) {
+        return null;
+      }
+    }
+
+    return NetworkImage(fotoPerfil);
+  }
+
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
@@ -40,10 +57,7 @@ class _MenuScreenState extends State<MenuScreen> {
             centerTitle: true,
           ),
           body: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 20,
-              vertical: 16,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -56,6 +70,8 @@ class _MenuScreenState extends State<MenuScreen> {
                 _buildSeccaoAssinatura(),
                 const SizedBox(height: 16),
                 _buildSeccaoSuporte(),
+                const SizedBox(height: 24),
+                _buildBotaoSair(),
                 const SizedBox(height: 36),
                 const Center(
                   child: Text(
@@ -87,10 +103,7 @@ class _MenuScreenState extends State<MenuScreen> {
       ),
       child: Row(
         children: [
-          const Icon(
-            Icons.error_outline_rounded,
-            color: Color(0xFFFF0004),
-          ),
+          const Icon(Icons.error_outline_rounded, color: Color(0xFFFF0004)),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
@@ -109,14 +122,16 @@ class _MenuScreenState extends State<MenuScreen> {
   Widget _buildSeccaoPerfil() {
     final String fotoPerfil =
         (_viewModel.fotoUrl != null && _viewModel.fotoUrl!.isNotEmpty)
-            ? _viewModel.fotoUrl!
-            : (_viewModel.perfil['fotoUrl'] ?? '').toString();
+        ? _viewModel.fotoUrl!
+        : (_viewModel.perfil['fotoUrl'] ?? '').toString();
 
-    final String nomePerfil =
-        (_viewModel.perfil['nome'] ?? '').toString().trim();
+    final String nomePerfil = (_viewModel.perfil['nome'] ?? '')
+        .toString()
+        .trim();
 
-    final String emailPerfil =
-        (_viewModel.perfil['email'] ?? '').toString().trim();
+    final String emailPerfil = (_viewModel.perfil['email'] ?? '')
+        .toString()
+        .trim();
 
     return GestureDetector(
       onTap: () {
@@ -144,11 +159,10 @@ class _MenuScreenState extends State<MenuScreen> {
                     children: [
                       CircleAvatar(
                         radius: 30,
-                        backgroundColor:
-                            context.colors.azulAlba.withOpacity(0.08),
-                        backgroundImage: fotoPerfil.isNotEmpty
-                            ? NetworkImage(fotoPerfil)
-                            : null,
+                        backgroundColor: context.colors.azulAlba.withOpacity(
+                          0.08,
+                        ),
+                        backgroundImage: _extrairImagemAvatar(fotoPerfil),
                         child: fotoPerfil.isEmpty
                             ? Icon(
                                 Icons.person_rounded,
@@ -163,16 +177,13 @@ class _MenuScreenState extends State<MenuScreen> {
                         decoration: BoxDecoration(
                           color: context.colors.focusColor,
                           shape: BoxShape.circle,
-                          border: Border.all(
-                            color: Colors.white,
-                            width: 2,
-                          ),
+                          border: Border.all(color: Colors.white, width: 2),
                         ),
                         child: _viewModel.isLoading
                             ? const Padding(
-                                padding: EdgeInsets.all(4),
+                                padding: EdgeInsets.all(3),
                                 child: CircularProgressIndicator(
-                                  strokeWidth: 2,
+                                  strokeWidth: 1.5,
                                   color: Colors.white,
                                 ),
                               )
@@ -303,10 +314,7 @@ class _MenuScreenState extends State<MenuScreen> {
           children: [
             Row(
               children: [
-                Icon(
-                  Icons.stars_rounded,
-                  color: context.colors.azulAlba,
-                ),
+                Icon(Icons.stars_rounded, color: context.colors.azulAlba),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
@@ -423,8 +431,8 @@ class _MenuScreenState extends State<MenuScreen> {
                       onPressed: _viewModel.isLoading
                           ? null
                           : () async {
-                              final sucesso =
-                                  await _viewModel.reativarAssinatura();
+                              final sucesso = await _viewModel
+                                  .reativarAssinatura();
 
                               if (sucesso && mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
@@ -575,9 +583,7 @@ class _MenuScreenState extends State<MenuScreen> {
                 onTap: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(
-                      builder: (context) => const FaqScreen(),
-                    ),
+                    MaterialPageRoute(builder: (context) => const FaqScreen()),
                   );
                 },
               ),
@@ -592,9 +598,7 @@ class _MenuScreenState extends State<MenuScreen> {
     return BoxDecoration(
       color: context.colors.whiteColor,
       borderRadius: BorderRadius.circular(22),
-      border: Border.all(
-        color: context.colors.azulAlba.withOpacity(0.04),
-      ),
+      border: Border.all(color: context.colors.azulAlba.withOpacity(0.04)),
       boxShadow: [
         BoxShadow(
           color: context.colors.azulAlba.withOpacity(0.03),
@@ -612,11 +616,7 @@ class _MenuScreenState extends State<MenuScreen> {
 
     return Row(
       children: [
-        Icon(
-          icon,
-          size: 18,
-          color: context.colors.azulAlba.withOpacity(0.5),
-        ),
+        Icon(icon, size: 18, color: context.colors.azulAlba.withOpacity(0.5)),
         const SizedBox(width: 10),
         Expanded(
           child: Column(
@@ -655,11 +655,7 @@ class _MenuScreenState extends State<MenuScreen> {
       padding: const EdgeInsets.symmetric(vertical: 7.0),
       child: Row(
         children: [
-          Icon(
-            icon,
-            size: 18,
-            color: context.colors.azulAlba.withOpacity(0.6),
-          ),
+          Icon(icon, size: 18, color: context.colors.azulAlba.withOpacity(0.6)),
           const SizedBox(width: 10),
           Text(
             "$label: ",
@@ -681,6 +677,56 @@ class _MenuScreenState extends State<MenuScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildBotaoSair() {
+    return GestureDetector(
+      onTap: _viewModel.isLoading
+          ? null
+          : () async {
+              await _viewModel.logout();
+              if (mounted) {
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(builder: (context) => const LoginScreen()),
+                  (route) => false,
+                );
+              }
+            },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeInOutCubic,
+        padding: const EdgeInsets.all(18),
+        decoration: _boxDecorationPadrao(),
+        child: Row(
+          children: [
+            Icon(Icons.logout_rounded, color: context.colors.azulAlba),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _viewModel.isLoading
+                  ? const Align(
+                      alignment: Alignment.centerLeft,
+                      child: SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    )
+                  : Text(
+                      "Sair",
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w900,
+                        color: context.colors.azulAlba,
+                      ),
+                    ),
+            ),
+          ],
+        ),
       ),
     );
   }

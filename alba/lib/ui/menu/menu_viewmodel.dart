@@ -1,20 +1,21 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:alba/data/repositories/auth_repository.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 
 class MenuViewModel extends ChangeNotifier {
   final AuthRepository _authRepository;
   final FirebaseFirestore _firestore;
-  final FirebaseStorage _storage = FirebaseStorage.instance;
   final ImagePicker _picker = ImagePicker();
 
   StreamSubscription<DocumentSnapshot>? _perfilSubscription;
+  String? _idDocumentoAtual;
 
   MenuViewModel(this._authRepository, {FirebaseFirestore? firestore})
-      : _firestore = firestore ?? FirebaseFirestore.instance {
+    : _firestore = firestore ?? FirebaseFirestore.instance {
     escutarDadosUsuario();
   }
 
@@ -27,7 +28,7 @@ class MenuViewModel extends ChangeNotifier {
     'uid': '',
     'nome': '',
     'email': '',
-    'telefone': '',
+    'phone': '',
     'curso': '',
     'universidade': '',
     'periodo': '',
@@ -41,7 +42,7 @@ class MenuViewModel extends ChangeNotifier {
   final cursoController = TextEditingController();
   final uniController = TextEditingController();
   final periodoController = TextEditingController();
-  final phoneController = TextEditingController();
+  final emailController = TextEditingController();
 
   String _emailNormalizado(String? email) {
     return (email ?? '').trim().toLowerCase();
@@ -57,44 +58,58 @@ class MenuViewModel extends ChangeNotifier {
     }
 
     _perfilSubscription?.cancel();
-
     final uid = usuarioLogado.uid;
-    final email = _emailNormalizado(usuarioLogado.email);
-
-    final docRef = _firestore.collection('Users').doc(uid);
 
     try {
-      final docAtual = await docRef.get();
+      isLoading = true;
+      notifyListeners();
 
-      if (!docAtual.exists) {
+      final querySnapshot = await _firestore
+          .collection('Users')
+          .where('uid', isEqualTo: uid)
+          .limit(1)
+          .get();
+
+      DocumentReference docRef;
+
+      if (querySnapshot.docs.isNotEmpty) {
+        final docEncontrado = querySnapshot.docs.first;
+        _idDocumentoAtual = docEncontrado.id;
+        docRef = _firestore.collection('Users').doc(_idDocumentoAtual);
+      } else {
+        String identificador = usuarioLogado.phoneNumber ?? uid;
+        identificador = identificador.replaceAll(RegExp(r'\D'), '');
+        if (identificador.isEmpty) identificador = uid;
+
+        _idDocumentoAtual = identificador;
+        docRef = _firestore.collection('Users').doc(_idDocumentoAtual);
+
         await docRef.set({
           'uid': uid,
-          'email': email,
-          'emailLower': email,
+          'email': _emailNormalizado(usuarioLogado.email),
+          'emailLower': _emailNormalizado(usuarioLogado.email),
           'nome': usuarioLogado.displayName ?? '',
-          'telefone': usuarioLogado.phoneNumber ?? '',
+          'phone': usuarioLogado.phoneNumber ?? '',
           'curso': '',
           'universidade': '',
           'periodo': '',
           'ramoNegocio': 'Alimentos',
           'fotoUrl': '',
-          'createdAt': FieldValue.serverTimestamp(),
+          'data_cadastro': FieldValue.serverTimestamp(),
           'updatedAt': FieldValue.serverTimestamp(),
         }, SetOptions(merge: true));
       }
-
       _perfilSubscription = docRef.snapshots().listen(
         (docSnapshot) {
           if (!docSnapshot.exists) return;
-
-          final data = docSnapshot.data() ?? {};
+          final Map<String, dynamic> data =
+              docSnapshot.data() as Map<String, dynamic>? ?? {};
 
           perfil = {
             'uid': data['uid'] ?? uid,
             'nome': data['nome'] ?? '',
-            'email': data['email'] ?? email,
-            'telefone': data['telefone'] ?? '',
-            'phone': data['phone'] ?? data['telefone'] ?? '',
+            'email': data['email'] ?? '',
+            'phone': data['phone'] ?? data['telefone'] ?? _idDocumentoAtual,
             'curso': data['curso'] ?? '',
             'universidade': data['universidade'] ?? '',
             'periodo': data['periodo'] ?? '',
@@ -114,33 +129,28 @@ class MenuViewModel extends ChangeNotifier {
             initControllers();
           }
 
+          isLoading = false;
           notifyListeners();
         },
         onError: (e) {
           errorMessage = 'Erro ao carregar perfil: $e';
+          isLoading = false;
           notifyListeners();
         },
       );
     } catch (e) {
-      errorMessage = 'Erro ao localizar ou criar perfil: $e';
+      errorMessage = 'Erro ao localizar perfil: $e';
+      isLoading = false;
       notifyListeners();
     }
   }
 
   Future<void> selecionarFotoPerfil() async {
-    final usuarioLogado = _authRepository.currentUser;
-
-    if (usuarioLogado == null) {
-      errorMessage = 'Erro: usuário não autenticado.';
-      notifyListeners();
-      return;
-    }
-
     try {
       final XFile? imagemSelecionada = await _picker.pickImage(
         source: ImageSource.gallery,
-        imageQuality: 70,
-        maxWidth: 600,
+        imageQuality: 50,
+        maxWidth: 400,
       );
 
       if (imagemSelecionada == null) return;
@@ -153,15 +163,11 @@ class MenuViewModel extends ChangeNotifier {
   }
 
   Future<void> fazerUploadFotoPerfil(XFile imagemSelecionada) async {
-    final usuarioLogado = _authRepository.currentUser;
-
-    if (usuarioLogado == null) {
-      errorMessage = 'Erro: usuário não autenticado.';
+    if (_idDocumentoAtual == null || _idDocumentoAtual!.isEmpty) {
+      errorMessage = 'Erro: Identificador do usuário não localizado.';
       notifyListeners();
       return;
     }
-
-    final uid = usuarioLogado.uid;
 
     isLoading = true;
     errorMessage = null;
@@ -169,58 +175,62 @@ class MenuViewModel extends ChangeNotifier {
 
     try {
       final bytes = await imagemSelecionada.readAsBytes();
+      final base64Image = base64Encode(bytes);
+      final fotoStringFinal = "data:image/jpeg;base64,$base64Image";
 
-      final ref = _storage.ref().child('perfil_fotos').child('$uid.jpg');
+      fotoUrl = fotoStringFinal;
+      perfil['fotoUrl'] = fotoStringFinal;
 
-      final metadata = SettableMetadata(
-        contentType: 'image/jpeg',
-        customMetadata: {
-          'uid': uid,
-        },
-      );
-
-      final uploadTask = await ref.putData(bytes, metadata);
-      final urlDownload = await uploadTask.ref.getDownloadURL();
-
-      fotoUrl = urlDownload;
-      perfil['fotoUrl'] = urlDownload;
-
-      await _firestore.collection('Users').doc(uid).set({
-        'uid': uid,
-        'fotoUrl': urlDownload,
+      await _firestore.collection('Users').doc(_idDocumentoAtual).set({
+        'fotoUrl': fotoStringFinal,
         'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
     } catch (e) {
-      errorMessage = 'Erro ao salvar a foto no Firebase: $e';
+      errorMessage = 'Erro ao processar e salvar a foto: $e';
     } finally {
       isLoading = false;
       notifyListeners();
     }
   }
 
-  Future<void> salvarPerfil() async {
+  Future<bool> salvarPerfil(String senhaAtual) async {
     final usuarioLogado = _authRepository.currentUser;
 
-    if (usuarioLogado == null) {
-      errorMessage = 'Erro: usuário autenticado não encontrado.';
+    if (_idDocumentoAtual == null || usuarioLogado == null) {
+      errorMessage = 'Erro: Usuário não autenticado.';
       notifyListeners();
-      return;
+      return false;
     }
-
-    final uid = usuarioLogado.uid;
-    final email = _emailNormalizado(usuarioLogado.email);
 
     isLoading = true;
     errorMessage = null;
     notifyListeners();
 
     try {
+      final novoEmail = _emailNormalizado(emailController.text);
+      final emailAntigo = _emailNormalizado(perfil['email']);
+
+      if (novoEmail != emailAntigo) {
+        if (senhaAtual.trim().isEmpty) {
+          throw Exception(
+            'A senha atual é obrigatória para alterar o e-mail de login.',
+          );
+        }
+
+        AuthCredential credential = EmailAuthProvider.credential(
+          email: emailAntigo,
+          password: senhaAtual,
+        );
+
+        await usuarioLogado.reauthenticateWithCredential(credential);
+
+        await usuarioLogado.verifyBeforeUpdateEmail(novoEmail);
+      }
+
       final dadosParaSalvar = {
-        'uid': uid,
         'nome': nameController.text.trim(),
-        'email': email,
-        'emailLower': email,
-        'telefone': phoneController.text.trim(),
+        'email': novoEmail,
+        'emailLower': novoEmail,
         'curso': cursoController.text.trim(),
         'universidade': uniController.text.trim(),
         'periodo': periodoController.text.trim(),
@@ -231,12 +241,20 @@ class MenuViewModel extends ChangeNotifier {
 
       await _firestore
           .collection('Users')
-          .doc(uid)
+          .doc(_idDocumentoAtual)
           .set(dadosParaSalvar, SetOptions(merge: true));
 
       isEditing = false;
+      return true;
     } catch (e) {
-      errorMessage = 'Não foi possível salvar as alterações: $e';
+      if (e.toString().contains('wrong-password')) {
+        errorMessage = 'A senha atual informada está incorreta.';
+      } else if (e.toString().contains('invalid-email')) {
+        errorMessage = 'O formato do novo e-mail é inválido.';
+      } else {
+        errorMessage = 'Erro ao atualizar: $e';
+      }
+      return false;
     } finally {
       isLoading = false;
       notifyListeners();
@@ -244,25 +262,17 @@ class MenuViewModel extends ChangeNotifier {
   }
 
   Future<void> activarAssinaturaTeste() async {
-    final usuarioLogado = _authRepository.currentUser;
-
-    if (usuarioLogado == null) {
-      errorMessage = 'Erro: usuário autenticado não encontrado.';
-      notifyListeners();
-      return;
-    }
-
-    final uid = usuarioLogado.uid;
+    if (_idDocumentoAtual == null) return;
 
     isLoading = true;
     notifyListeners();
 
     try {
-      await _firestore.collection('Users').doc(uid).set({
+      await _firestore.collection('Users').doc(_idDocumentoAtual).set({
         'assinatura': {
           'statusAssinatura': 'Plano ativo',
           'valorPlano': 'R\$ 39,90',
-          'dataRenovacao': '15/07/2026',
+          'dataRenovacao': '20/06/2026',
           'createdAt': FieldValue.serverTimestamp(),
         },
         'updatedAt': FieldValue.serverTimestamp(),
@@ -276,22 +286,14 @@ class MenuViewModel extends ChangeNotifier {
   }
 
   Future<bool> cancelarAssinatura(String motivo, String feedback) async {
-    final usuarioLogado = _authRepository.currentUser;
-
-    if (usuarioLogado == null) {
-      errorMessage = 'Erro de autenticação: usuário inválido.';
-      notifyListeners();
-      return false;
-    }
-
-    final uid = usuarioLogado.uid;
+    if (_idDocumentoAtual == null) return false;
 
     isLoading = true;
     errorMessage = null;
     notifyListeners();
 
     try {
-      await _firestore.collection('Users').doc(uid).set({
+      await _firestore.collection('Users').doc(_idDocumentoAtual).set({
         'assinatura': {
           'statusAssinatura': 'Plano cancelado',
           'valorPlano': assinatura?['valorPlano'] ?? 'R\$ 39,90',
@@ -302,7 +304,8 @@ class MenuViewModel extends ChangeNotifier {
       }, SetOptions(merge: true));
 
       await _firestore.collection('feedbacks_cancelamento').add({
-        'userId': uid,
+        'userId': perfil['uid'] ?? '',
+        'phone': perfil['phone'] ?? _idDocumentoAtual,
         'email': perfil['email'] ?? '',
         'motivo': motivo,
         'feedbackAdicional': feedback,
@@ -321,22 +324,14 @@ class MenuViewModel extends ChangeNotifier {
   }
 
   Future<bool> reativarAssinatura() async {
-    final usuarioLogado = _authRepository.currentUser;
-
-    if (usuarioLogado == null) {
-      errorMessage = 'Erro: usuário autenticado não encontrado.';
-      notifyListeners();
-      return false;
-    }
-
-    final uid = usuarioLogado.uid;
+    if (_idDocumentoAtual == null) return false;
 
     isLoading = true;
     errorMessage = null;
     notifyListeners();
 
     try {
-      await _firestore.collection('Users').doc(uid).set({
+      await _firestore.collection('Users').doc(_idDocumentoAtual).set({
         'assinatura': {
           'statusAssinatura': 'Plano ativo',
           'valorPlano': 'R\$ 39,90',
@@ -355,9 +350,23 @@ class MenuViewModel extends ChangeNotifier {
     }
   }
 
-  String get telefoneFormatado {
-    final tel = perfil['telefone']?.toString() ?? '';
+  Future<void> logout() async {
+    isLoading = true;
+    notifyListeners();
 
+    try {
+      await _perfilSubscription?.cancel();
+      await _authRepository.logout();
+    } catch (e) {
+      errorMessage = 'Erro ao sair da conta: $e';
+    } finally {
+      isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  String get telefoneFormatado {
+    final tel = perfil['phone']?.toString() ?? '';
     final apenasNumeros = tel.replaceAll(RegExp(r'\D'), '');
 
     if (apenasNumeros.length == 13) {
@@ -382,7 +391,7 @@ class MenuViewModel extends ChangeNotifier {
     cursoController.text = perfil['curso'] ?? '';
     uniController.text = perfil['universidade'] ?? '';
     periodoController.text = perfil['periodo'] ?? '';
-    phoneController.text = perfil['telefone'] ?? '';
+    emailController.text = perfil['email'] ?? '';
   }
 
   void alternarEdicao() {
@@ -401,7 +410,7 @@ class MenuViewModel extends ChangeNotifier {
     cursoController.dispose();
     uniController.dispose();
     periodoController.dispose();
-    phoneController.dispose();
+    emailController.dispose();
     super.dispose();
   }
 }
