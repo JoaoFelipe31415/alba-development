@@ -16,7 +16,7 @@ void main() {
 
     test('deve retornar erro se menor que 3 caracteres', () {
       final result = TarefaValidator.validateTitulo('ab');
-      expect(result, 'Deve conter pelo menos 3 caracteres');
+      expect(result, 'Deve conter pelo menos 3 caracteres.');
     });
 
     test('deve aceitar título válido', () {

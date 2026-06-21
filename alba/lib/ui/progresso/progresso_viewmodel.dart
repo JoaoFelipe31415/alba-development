@@ -148,7 +148,7 @@ class ProgressViewModel extends ChangeNotifier {
 
         if (dataResposta.isAfter(dataInicio) ||
             dataResposta.isAtSameMomentAs(dataInicio)) {
-          String emojiEncontrado = _mapMood(doc['sentimento'] ?? "");
+          String emojiEncontrado = mapMood(doc['sentimento'] ?? "");
           if (emojiEncontrado == '⚪') continue;
 
           if (isMensal) {
@@ -315,7 +315,8 @@ class ProgressViewModel extends ChangeNotifier {
     }
   }
 
-  String _mapMood(String sentiment) {
+  @visibleForTesting
+  static String mapMood(String sentiment) {
     final s = sentiment.toLowerCase().trim();
 
     if (s.contains('ótim') || s.contains('otim')) return '😃';
@@ -360,7 +361,7 @@ class ProgressViewModel extends ChangeNotifier {
           String? gargaloBruto = doc['gargaloPrincipal'];
 
           if (gargaloBruto != null && gargaloBruto.trim().isNotEmpty) {
-            String chave = _normalizarGargalo(gargaloBruto);
+            String chave = normalizarGargalo(gargaloBruto);
 
             if (contador.containsKey(chave)) {
               contador[chave] = contador[chave]! + 1;
@@ -374,7 +375,7 @@ class ProgressViewModel extends ChangeNotifier {
       return BarDataModel(
         label: entry.key,
         value: entry.value,
-        colorHex: _definirCorGargalo(entry.key),
+        colorHex: definirCorGargalo(entry.key),
         attributed: 0,
       );
     }).toList();
@@ -382,7 +383,8 @@ class ProgressViewModel extends ChangeNotifier {
     data?.bottlenecks.sort((a, b) => b.value.compareTo(a.value));
   }
 
-  String _definirCorGargalo(String label) {
+  @visibleForTesting
+  static String definirCorGargalo(String label) {
     switch (label) {
       case 'Procrastinação':
         return "0xFFEF4444";
@@ -399,7 +401,8 @@ class ProgressViewModel extends ChangeNotifier {
     }
   }
 
-  String _normalizarGargalo(String texto) {
+  @visibleForTesting
+  static String normalizarGargalo(String texto) {
     final t = texto.toLowerCase().trim();
 
     if (t.isEmpty) return '';
@@ -512,7 +515,7 @@ class ProgressViewModel extends ChangeNotifier {
             (dataDoc.isBefore(dataFim) || dataDoc.isAtSameMomentAs(dataFim));
 
         if (dentroDoPeriodoMonit && doc['tempoDescanso'] != null) {
-          int minutos = _extrairMinutos(doc['tempoDescanso'].toString());
+          int minutos = extrairMinutos(doc['tempoDescanso'].toString());
           if (minutos > 0) {
             String diaChave = "${dataDoc.year}-${dataDoc.month}-${dataDoc.day}";
             diasDescanso.add(diaChave);
@@ -615,7 +618,7 @@ class ProgressViewModel extends ChangeNotifier {
     int contMais2h = 0;
 
     for (var doc in documentosFiltrados) {
-      int minutos = _extrairMinutos(doc['tempoDescanso']);
+      int minutos = extrairMinutos(doc['tempoDescanso']);
 
       if (minutos <= 0) {
         contNenhum++;
@@ -663,7 +666,8 @@ class ProgressViewModel extends ChangeNotifier {
     return "⚡ Excelente equilíbrio! Seu descanso está mantendo sua mente afiada, essencial para a sustentabilidade ao longo prazo.";
   }
 
-  int _extrairMinutos(dynamic tempoRaw) {
+  @visibleForTesting
+  static int extrairMinutos(dynamic tempoRaw) {
     String texto = tempoRaw.toString().toLowerCase().trim();
     int valor = int.tryParse(texto.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
 
