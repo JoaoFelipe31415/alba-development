@@ -64,15 +64,13 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       curve: Curves.easeOut,
     );
 
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.035),
-      end: Offset.zero,
-    ).animate(
-      CurvedAnimation(
-        parent: _animationController,
-        curve: Curves.easeOutCubic,
-      ),
-    );
+    _slideAnimation =
+        Tween<Offset>(begin: const Offset(0, 0.035), end: Offset.zero).animate(
+          CurvedAnimation(
+            parent: _animationController,
+            curve: Curves.easeOutCubic,
+          ),
+        );
 
     _animationController.forward();
 
@@ -106,9 +104,9 @@ class _OnboardingScreenState extends State<OnboardingScreen>
 
     if (!mounted) return;
 
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const LoginScreen()),
-    );
+    Navigator.of(
+      context,
+    ).pushReplacement(MaterialPageRoute(builder: (_) => const LoginScreen()));
   }
 
   void _proximaPagina() {
@@ -240,10 +238,7 @@ class _SplashAlbaScreen extends StatelessWidget {
               builder: (context, scale, child) {
                 return Opacity(
                   opacity: scale.clamp(0.0, 1.0),
-                  child: Transform.scale(
-                    scale: scale,
-                    child: child,
-                  ),
+                  child: Transform.scale(scale: scale, child: child),
                 );
               },
               child: Image.asset(
@@ -300,20 +295,14 @@ class _BlurCircle extends StatelessWidget {
   final double size;
   final Color color;
 
-  const _BlurCircle({
-    required this.size,
-    required this.color,
-  });
+  const _BlurCircle({required this.size, required this.color});
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: size,
       height: size,
-      decoration: BoxDecoration(
-        color: color,
-        shape: BoxShape.circle,
-      ),
+      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
     );
   }
 }
@@ -322,10 +311,7 @@ class _SplashWavePainter extends CustomPainter {
   final Color azulAlba;
   final Color neonGreen;
 
-  const _SplashWavePainter({
-    required this.azulAlba,
-    required this.neonGreen,
-  });
+  const _SplashWavePainter({required this.azulAlba, required this.neonGreen});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -376,11 +362,7 @@ class _SplashWavePainter extends CustomPainter {
   }
 }
 
-enum _OnboardingImageType {
-  logoNome,
-  logoSvg,
-  coruja,
-}
+enum _OnboardingImageType { logoNome, logoSvg, coruja }
 
 class _OnboardingData {
   final _OnboardingImageType imageType;
@@ -399,9 +381,7 @@ class _OnboardingData {
 class _OnboardingPage extends StatelessWidget {
   final _OnboardingData data;
 
-  const _OnboardingPage({
-    required this.data,
-  });
+  const _OnboardingPage({required this.data});
 
   @override
   Widget build(BuildContext context) {
@@ -441,18 +421,13 @@ class _OnboardingPage extends StatelessWidget {
 class _ImageCard extends StatelessWidget {
   final _OnboardingImageType imageType;
 
-  const _ImageCard({
-    required this.imageType,
-  });
+  const _ImageCard({required this.imageType});
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      constraints: const BoxConstraints(
-        minHeight: 245,
-        maxHeight: 295,
-      ),
+      constraints: const BoxConstraints(minHeight: 245, maxHeight: 295),
       padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 24),
       decoration: BoxDecoration(
         color: context.colors.whiteColor.withOpacity(0.92),
@@ -469,9 +444,7 @@ class _ImageCard extends StatelessWidget {
           ),
         ],
       ),
-      child: Center(
-        child: _buildImage(context),
-      ),
+      child: Center(child: _buildImage(context)),
     );
   }
 
@@ -507,10 +480,7 @@ class _DescriptionText extends StatelessWidget {
   final String description;
   final String? highlightWord;
 
-  const _DescriptionText({
-    required this.description,
-    this.highlightWord,
-  });
+  const _DescriptionText({required this.description, this.highlightWord});
 
   @override
   Widget build(BuildContext context) {
@@ -523,11 +493,7 @@ class _DescriptionText extends StatelessWidget {
     );
 
     if (highlightWord == null || !description.contains(highlightWord!)) {
-      return Text(
-        description,
-        textAlign: TextAlign.center,
-        style: baseStyle,
-      );
+      return Text(description, textAlign: TextAlign.center, style: baseStyle);
     }
 
     final parts = description.split(highlightWord!);
@@ -553,10 +519,7 @@ class _ProgressDots extends StatelessWidget {
   final int currentPage;
   final int totalPages;
 
-  const _ProgressDots({
-    required this.currentPage,
-    required this.totalPages,
-  });
+  const _ProgressDots({required this.currentPage, required this.totalPages});
 
   @override
   Widget build(BuildContext context) {
@@ -595,10 +558,7 @@ class _ProgressDots extends StatelessWidget {
 class _NextButton extends StatelessWidget {
   final VoidCallback onPressed;
 
-  const _NextButton({
-    super.key,
-    required this.onPressed,
-  });
+  const _NextButton({super.key, required this.onPressed});
 
   @override
   Widget build(BuildContext context) {
@@ -644,10 +604,7 @@ class _NextButton extends StatelessWidget {
 class _StartButton extends StatelessWidget {
   final VoidCallback onPressed;
 
-  const _StartButton({
-    super.key,
-    required this.onPressed,
-  });
+  const _StartButton({super.key, required this.onPressed});
 
   @override
   Widget build(BuildContext context) {
@@ -657,10 +614,7 @@ class _StartButton extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(18),
         gradient: LinearGradient(
-          colors: [
-            context.colors.azulAlba,
-            context.colors.focusColor,
-          ],
+          colors: [context.colors.azulAlba, context.colors.focusColor],
           begin: Alignment.centerLeft,
           end: Alignment.centerRight,
         ),
