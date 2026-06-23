@@ -70,8 +70,8 @@ class MetasRepository {
     }
   }
 
-  Future<List<String>> _obterTodosIdentificadores() async {
-    final ids = <String>[];
+  Future<List<dynamic>> _obterTodosIdentificadores() async {
+    final ids = <dynamic>[];
 
     if (_userId.isNotEmpty) {
       ids.add(_userId);
@@ -81,7 +81,7 @@ class MetasRepository {
       final telefone = await _obterTelefoneDoUsuario();
 
       if (telefone.isNotEmpty && !ids.contains(telefone)) {
-        ids.add(telefone);
+        ids.add(int.parse(telefone));
       }
 
       final telefoneComIgual = '=$telefone';
@@ -148,8 +148,8 @@ class MetasRepository {
           .where('userId', whereIn: idsValidos)
           .snapshots()
           .map((querySnapshot) {
-        return _converterSnapshotParaMetas(querySnapshot);
-      });
+            return _converterSnapshotParaMetas(querySnapshot);
+          });
     } catch (e) {
       print('Erro ao carregar metas em tempo real: $e');
       throw Exception(
@@ -278,17 +278,17 @@ class MetasRepository {
           .where('userId', whereIn: idsValidos)
           .snapshots()
           .map((querySnapshot) {
-        final metas = _converterSnapshotParaMetas(querySnapshot);
-        final termoBusca = titulo.toLowerCase().trim();
+            final metas = _converterSnapshotParaMetas(querySnapshot);
+            final termoBusca = titulo.toLowerCase().trim();
 
-        if (termoBusca.isEmpty) {
-          return metas;
-        }
+            if (termoBusca.isEmpty) {
+              return metas;
+            }
 
-        return metas.where((meta) {
-          return meta.tituloMeta.toLowerCase().contains(termoBusca);
-        }).toList();
-      });
+            return metas.where((meta) {
+              return meta.tituloMeta.toLowerCase().contains(termoBusca);
+            }).toList();
+          });
     } catch (e) {
       throw Exception(
         'Não foi possível buscar as metas em tempo real. Tente novamente.',

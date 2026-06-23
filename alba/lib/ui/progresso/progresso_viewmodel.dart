@@ -13,6 +13,21 @@ class ProgressViewModel extends ChangeNotifier {
   final TarefasRepository _tarefasRepository = TarefasRepository();
   final AuthRepository _authRepository = AuthRepository();
 
+  bool _isDisposed = false;
+
+  @override
+  void dispose() {
+    _isDisposed = true;
+    super.dispose();
+  }
+
+  @override
+  void notifyListeners() {
+    if (!_isDisposed) {
+      super.notifyListeners();
+    }
+  }
+
   bool isLoading = true;
   String currentFilter = 'Semana';
   ProgressDataModel? data;
@@ -103,6 +118,8 @@ class ProgressViewModel extends ChangeNotifier {
       data = ProgressDTO.fromFirestore({});
       _gerarInsightsDaAlba([]);
     }
+
+    if (_isDisposed) return;
 
     isLoading = false;
     notifyListeners();

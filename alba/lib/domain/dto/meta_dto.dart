@@ -61,11 +61,11 @@ class MetaDto {
   factory MetaDto.fromMap(Map<String, dynamic> data, String id) {
     return MetaDto(
       id: id,
-      tituloMeta: data['tituloMeta'] ?? '',
-      descricao: data['descricao'],
+      tituloMeta: data['tituloMeta']?.toString() ?? '',
+      descricao: data['descricao']?.toString(),
       prazo: _parseDate(data['prazo']) ?? DateTime.now(),
-      tag: data['tag'] ?? 'faculdade',
-      userId: data['userId'] ?? '',
+      tag: data['tag']?.toString() ?? 'faculdade',
+      userId: data['userId']?.toString() ?? '',
       dataCriacao: _parseDate(data['dataCriacao']) ?? DateTime.now(),
       concluida: data['concluida'] == true,
       dataConclusao: _parseDate(data['dataConclusao']),
