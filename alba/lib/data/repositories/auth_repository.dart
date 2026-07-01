@@ -22,6 +22,18 @@ class AuthRepository {
     }
   }
 
+  Future<bool> verificarConfirmacao() async {
+    User? user = FirebaseAuth.instance.currentUser;
+
+    if (user != null) {
+      await user.reload();
+      user = FirebaseAuth.instance.currentUser;
+
+      if (user != null && user.emailVerified) return true;
+    }
+    return false;
+  }
+
   Future<void> register(CredentialsRegisterDto dto) async {
     try {
       await _auth.createUserWithEmailAndPassword(
@@ -67,10 +79,14 @@ class AuthRepository {
       var data = {
         'uid': uid,
         'email': dto.email,
+        'phone': dto.phone,
         'data_cadastro': FieldValue.serverTimestamp(),
       };
 
-      await FirebaseFirestore.instance.collection('Users').doc(uid).set(data);
+      await FirebaseFirestore.instance
+          .collection('Users')
+          .doc(dto.phone)
+          .set(data);
     } catch (e) {
       rethrow;
     }

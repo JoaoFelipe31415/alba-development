@@ -10,6 +10,10 @@ class LoginViewmodel extends ChangeNotifier {
 
   bool get isLoggedIn => _authRepository.isLoggedIn;
 
+  Future<bool> verificarConfirmacao() async {
+    return await _authRepository.verificarConfirmacao();
+  }
+
   Future<void> login(CredentialsLoginDto dto) async {
     try {
       await _authRepository.login(dto);

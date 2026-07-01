@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:alba/domain/dto/tarefa_dto.dart';
+import 'package:alba/domain/entities/recorrencia.dart';
 import 'package:alba/ui/design_system/theme/app_colors.dart';
 
 class TarefaCard extends StatelessWidget {
@@ -16,26 +17,46 @@ class TarefaCard extends StatelessWidget {
 
   // Widget para os círculos dos dias
   Widget _buildDia(String letra, String dia, AppColors colors) {
-    final selecionado = tarefa.diasRealizacao.contains(dia);
+    final selecionado = tarefa.diasRealizacao
+        .map((value) => value.toLowerCase())
+        .contains(dia.toLowerCase());
     return Container(
       width: 28,
       height: 28,
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        // Usando as cores da sua extensão
-        color: selecionado ? colors.neonGreen: colors.whiteColor,
+        color: selecionado ? colors.neonGreen : colors.whiteColor,
+        border: Border.all(
+          color: selecionado ? colors.neonGreen : colors.greyThree,
+          width: 1.5,
+        ),
         shape: BoxShape.circle,
       ),
       child: Text(
         letra,
         style: TextStyle(
-          // Invertendo a cor conforme seleção
-          color: selecionado ? colors.azulAlba : colors.azulAlba,
+          color: selecionado ? colors.whiteColor : colors.azulAlba,
           fontSize: 12,
           fontWeight: FontWeight.bold,
         ),
       ),
     );
+  }
+
+  // 🔧 BUG FIX: Determina se deve mostrar seletores de dias baseado no tipo
+  bool _shouldShowDias() {
+    // Mostrar dias apenas para tipos que os usam
+    switch (tarefa.tipoRecorrencia) {
+      case TipoRecorrencia.diaria:
+      case TipoRecorrencia.segAVinco:
+      case TipoRecorrencia.personalizado:
+        return true;
+      case TipoRecorrencia.naoRepete:
+      case TipoRecorrencia.semanal:
+      case TipoRecorrencia.mensal:
+      case TipoRecorrencia.anual:
+        return false;
+    }
   }
 
   @override
@@ -61,9 +82,13 @@ class TarefaCard extends StatelessWidget {
           Row(
             children: [
               Icon(
-                Icons.check_circle_outline, 
-                color: appColors.successColor, 
-                size: 22
+                tarefa.status.toLowerCase() == 'concluida'
+                    ? Icons.check_circle
+                    : Icons.check_circle_outline,
+                color: tarefa.status.toLowerCase() == 'concluida'
+                    ? appColors.successColor
+                    : appColors.whiteColor,
+                size: 22,
               ),
               const SizedBox(width: 10),
               Expanded(
@@ -76,6 +101,26 @@ class TarefaCard extends StatelessWidget {
                   ),
                 ),
               ),
+              if (tarefa.tag != null && tarefa.tag!.isNotEmpty)
+                Container(
+                  margin: const EdgeInsets.only(right: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: _tagColor(tarefa.tag, appColors).withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    _formatarTag(tarefa.tag),
+                    style: TextStyle(
+                      color: _tagColor(tarefa.tag, appColors),
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
               IconButton(
                 constraints: const BoxConstraints(),
                 padding: const EdgeInsets.all(4),
@@ -85,24 +130,30 @@ class TarefaCard extends StatelessWidget {
               IconButton(
                 constraints: const BoxConstraints(),
                 padding: const EdgeInsets.all(4),
-                icon: Icon(Icons.delete, color: appColors.successColor, size: 20),
+                icon: Icon(
+                  Icons.delete,
+                  color: appColors.successColor,
+                  size: 20,
+                ),
                 onPressed: onDelete,
               ),
             ],
           ),
           const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _buildDia('S', 'segunda', appColors),
-              _buildDia('T', 'terca', appColors),
-              _buildDia('Q', 'quarta', appColors),
-              _buildDia('Q', 'quinta', appColors),
-              _buildDia('S', 'sexta', appColors),
-              _buildDia('S', 'sabado', appColors),
-              _buildDia('D', 'domingo', appColors),
-            ],
-          ),
+          // 🔧 BUG FIX: Só mostrar dias se a recorrência requer (não mostrar para "naoRepete", "mensal", "semanal", "anual")
+          if (_shouldShowDias())
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                _buildDia('S', 'segunda', appColors),
+                _buildDia('T', 'terca', appColors),
+                _buildDia('Q', 'quarta', appColors),
+                _buildDia('Q', 'quinta', appColors),
+                _buildDia('S', 'sexta', appColors),
+                _buildDia('S', 'sabado', appColors),
+                _buildDia('D', 'domingo', appColors),
+              ],
+            ),
         ],
       ),
     );
@@ -112,5 +163,12 @@ class TarefaCard extends StatelessWidget {
   String _formatarTag(String? tag) {
     if (tag == null || tag.isEmpty) return '';
     return tag.toLowerCase() == 'negocio' ? 'Negócio' : 'Faculdade';
+  }
+
+  Color _tagColor(String? tag, AppColors colors) {
+    if (tag == null || tag.isEmpty) return colors.greyThree;
+    return tag.toLowerCase() == 'negocio'
+        ? colors.neonGreen
+        : colors.primaryColor;
   }
 }

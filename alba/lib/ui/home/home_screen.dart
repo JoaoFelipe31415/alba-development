@@ -1,14 +1,16 @@
-import 'package:alba/config/dependencies.dart';
-import 'package:alba/data/repositories/auth_repository.dart';
-import 'package:alba/data/repositories/metas_repository.dart';
-import 'package:alba/domain/dto/meta_dto.dart';
 import 'package:alba/ui/design_system/theme/app_colors.dart';
-import 'package:alba/ui/login/login_screen.dart';
-import 'package:alba/ui/metas/criar_meta_screen.dart';
-import 'package:alba/ui/metas/editar_meta_screen.dart';
+import 'package:alba/ui/menu/menu_screen.dart';
 import 'package:alba/ui/metas/gerenciamento_metas_screen.dart';
+import 'package:alba/ui/progresso/progresso_screen.dart';
+import 'package:alba/ui/progresso/progresso_viewmodel.dart';
 import 'package:alba/ui/tarefas/gerenciamento_tarefas_screen.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+const Color _albaCircleColor = Color(0xFF7FE2E1);
+const Color _unselectedNavColor = Color(0xFFB3CCFF);
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -18,45 +20,111 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final authRepository = injector.get<AuthRepository>();
   int _selectedIndex = 0;
 
   late final List<Widget> _screens = [
-    const InicioScreen(),
+    ChangeNotifierProvider(
+      create: (context) => ProgressViewModel(),
+      child: const ProgressScreen(),
+    ),
+
     const GeraciamentoMetasScreen(),
+
+    const SizedBox(),
+
     const GerenciamentoTarefasScreen(),
-    const _ProximamentScreen(), // Progresso
-    const _ProximamentScreen(), // On-Demand
-    const _ProximamentScreen(), // Menu
+
+    const MenuScreen(),
   ];
+
+  Future<void> _openAlbaWhatsapp() async {
+    final whatsappUrl = Uri.parse('whatsapp://send?phone=5581995705981');
+    final webUrl = Uri.parse('https://wa.me/5581995705981');
+
+    final shouldOpenWhatsappApp = !kIsWeb && await canLaunchUrl(whatsappUrl);
+    final targetUrl = shouldOpenWhatsappApp ? whatsappUrl : webUrl;
+
+    final launched = await launchUrl(
+      targetUrl,
+      mode: LaunchMode.externalApplication,
+    );
+
+    if (!launched && targetUrl != webUrl) {
+      await launchUrl(webUrl, mode: LaunchMode.externalApplication);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final selectedIndex = _selectedIndex.clamp(0, _screens.length - 1).toInt();
+    final keyboardIsOpen = MediaQuery.of(context).viewInsets.bottom > 0;
+
     return Scaffold(
-      backgroundColor: context.colors.backgroundColor,
-      body: _screens[_selectedIndex],
+      backgroundColor: context.colors.whiteColor,
+      body: _screens[selectedIndex],
+
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+
+      // Quando o teclado abre, escondemos a bolinha ALBA.
+      // Isso impede que ela suba e fique por cima da tela.
+      floatingActionButton: keyboardIsOpen
+          ? null
+          : _AlbaNavButton(onTap: _openAlbaWhatsapp),
+
       bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        onTap: (index) {
+        currentIndex: selectedIndex,
+        onTap: (index) async {
+          if (index == 2) {
+            await _openAlbaWhatsapp();
+            return;
+          }
+
           setState(() {
             _selectedIndex = index;
           });
         },
-        backgroundColor: context.colors.greyOne,
-        selectedItemColor: context.colors.primaryColor,
-        unselectedItemColor: context.colors.textPrimaryColor,
+        backgroundColor: context.colors.azulAlba,
+        selectedItemColor: _albaCircleColor,
+        unselectedItemColor: _unselectedNavColor,
         type: BottomNavigationBarType.fixed,
+        selectedIconTheme: const IconThemeData(
+          color: _albaCircleColor,
+          size: 30,
+        ),
+        unselectedIconTheme: const IconThemeData(
+          color: _unselectedNavColor,
+          size: 26,
+        ),
+        selectedLabelStyle: const TextStyle(
+          color: _albaCircleColor,
+          fontSize: 15,
+          fontWeight: FontWeight.w700,
+        ),
+        unselectedLabelStyle: const TextStyle(
+          color: _unselectedNavColor,
+          fontSize: 13,
+          fontWeight: FontWeight.w500,
+        ),
+        showSelectedLabels: true,
+        showUnselectedLabels: true,
+        enableFeedback: true,
         items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Início'),
-          BottomNavigationBarItem(icon: Icon(Icons.flag), label: 'Metas'),
-          BottomNavigationBarItem(icon: Icon(Icons.check_circle), label: 'Tarefas',),
           BottomNavigationBarItem(
             icon: Icon(Icons.bar_chart),
             label: 'Progresso',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.flash_on),
-            label: 'On-Demand',
+            icon: Icon(Icons.location_on),
+            label: 'Metas',
+          ),
+          BottomNavigationBarItem(
+            icon: SizedBox.shrink(),
+            activeIcon: SizedBox.shrink(),
+            label: '',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.check_circle),
+            label: 'Tarefas',
           ),
           BottomNavigationBarItem(icon: Icon(Icons.menu), label: 'Menu'),
         ],
@@ -65,295 +133,59 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-class InicioScreen extends StatefulWidget {
-  const InicioScreen({super.key});
+class _AlbaNavButton extends StatefulWidget {
+  final VoidCallback onTap;
+
+  const _AlbaNavButton({required this.onTap});
 
   @override
-  State<InicioScreen> createState() => _InicioScreenState();
+  State<_AlbaNavButton> createState() => _AlbaNavButtonState();
 }
 
-class _InicioScreenState extends State<InicioScreen> {
-  final authRepository = injector.get<AuthRepository>();
-  final metasRepository = injector.get<MetasRepository>();
+class _AlbaNavButtonState extends State<_AlbaNavButton> {
+  bool _isHovered = false;
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: context.colors.backgroundColor,
-      appBar: AppBar(
-        backgroundColor: context.colors.backgroundColor,
-        elevation: 0,
-        title: Text(
-          'Gerenciamento de Metas',
-          style: TextStyle(
-            color: context.colors.whiteColor,
-            fontWeight: FontWeight.bold,
-            fontSize: 20,
-          ),
-        ),
-        actions: [
-          PopupMenuButton(
-            color: context.colors.greyOne,
-            itemBuilder: (context) => [
-              PopupMenuItem(
-                child: Text(
-                  'Sair',
-                  style: TextStyle(color: context.colors.errorColor),
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedScale(
+          scale: _isHovered ? 1.12 : 1,
+          duration: const Duration(milliseconds: 160),
+          curve: Curves.easeOut,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 160),
+            curve: Curves.easeOut,
+            width: 62,
+            height: 62,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: _albaCircleColor,
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0x33000000),
+                  blurRadius: _isHovered ? 12 : 8,
+                  offset: const Offset(0, 3),
                 ),
-                onTap: () {
-                  authRepository.logout();
-                  Navigator.of(context).pushReplacement(
-                    MaterialPageRoute(
-                      builder: (context) => const LoginScreen(),
-                    ),
-                  );
-                },
-              ),
-            ],
-            child: Icon(Icons.more_vert, color: context.colors.whiteColor),
-          ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.of(context)
-              .push(
-                MaterialPageRoute(
-                  builder: (context) => const CriarMetaScreen(),
-                ),
-              )
-              .then((_) {
-                if (mounted) {
-                  setState(() {});
-                }
-              });
-        },
-        backgroundColor: context.colors.primaryColor,
-        child: Icon(Icons.add, color: context.colors.whiteColor, size: 32),
-      ),
-      body: StreamBuilder<List<MetaDto>>(
-        stream: metasRepository.obterMetasStream(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(
-              child: CircularProgressIndicator(
-                color: context.colors.primaryColor,
-              ),
-            );
-          }
-
-          if (snapshot.hasError) {
-            return Center(
-              child: Text(
-                'Erro ao carregar metas',
-                style: TextStyle(color: context.colors.errorColor),
-              ),
-            );
-          }
-
-          final todasAsMetas = snapshot.data ?? [];
-
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Minhas Metas',
-                  style: TextStyle(
-                    color: context.colors.whiteColor,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                if (todasAsMetas.isNotEmpty)
-                  ...todasAsMetas.map((meta) {
-                    return GestureDetector(
-                      onTap: () {
-                        Navigator.of(context)
-                            .push(
-                              MaterialPageRoute(
-                                builder: (context) =>
-                                    EditarMetaScreen(meta: meta),
-                              ),
-                            )
-                            .then((_) {
-                              if (mounted) {
-                                setState(() {});
-                              }
-                            });
-                      },
-                      child: Container(
-                        margin: const EdgeInsets.only(bottom: 16),
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Color(0xFF1E3A8A),
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 48,
-                              height: 48,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: context.colors.whiteColor.withAlpha(
-                                    (255 * 0.4).toInt(),
-                                  ),
-                                  width: 2,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    meta.tituloMeta,
-                                    style: TextStyle(
-                                      color: context.colors.whiteColor,
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 10,
-                                      vertical: 4,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: _getCorTag(meta.tag),
-                                      borderRadius: BorderRadius.circular(6),
-                                    ),
-                                    child: Text(
-                                      _getNomeTag(meta.tag),
-                                      style: TextStyle(
-                                        color: context.colors.backgroundColor,
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Column(
-                              children: [
-                                GestureDetector(
-                                  onTap: () {
-                                    showDialog(
-                                      context: context,
-                                      builder: (context) => AlertDialog(
-                                        backgroundColor: context.colors.greyOne,
-                                        title: Text(
-                                          'Deletar meta?',
-                                          style: TextStyle(
-                                            color: context.colors.whiteColor,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                        content: Text(
-                                          'Tem certeza que deseja deletar esta meta?',
-                                          style: TextStyle(
-                                            color:
-                                                context.colors.textPrimaryColor,
-                                          ),
-                                        ),
-                                        actions: [
-                                          TextButton(
-                                            onPressed: () =>
-                                                Navigator.pop(context),
-                                            child: Text(
-                                              'Cancelar',
-                                              style: TextStyle(
-                                                color:
-                                                    context.colors.focusColor,
-                                              ),
-                                            ),
-                                          ),
-                                          TextButton(
-                                            onPressed: () async {
-                                              try {
-                                                await metasRepository
-                                                    .excluirMeta(meta.id!);
-                                                if (mounted) {
-                                                  Navigator.pop(context);
-                                                  setState(() {});
-                                                }
-                                              } catch (e) {
-                                                if (mounted) {
-                                                  Navigator.pop(context);
-                                                  ScaffoldMessenger.of(
-                                                    context,
-                                                  ).showSnackBar(
-                                                    SnackBar(
-                                                      content: Text(
-                                                        e.toString(),
-                                                      ),
-                                                      backgroundColor: context
-                                                          .colors
-                                                          .errorColor,
-                                                    ),
-                                                  );
-                                                }
-                                              }
-                                            },
-                                            child: Text(
-                                              'Deletar',
-                                              style: TextStyle(
-                                                color:
-                                                    context.colors.errorColor,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    );
-                                  },
-                                  child: Icon(
-                                    Icons.delete,
-                                    color: Colors.green,
-                                    size: 22,
-                                  ),
-                                ),
-                                const SizedBox(height: 12),
-                                Icon(
-                                  Icons.edit,
-                                  color: Color(0xFF84F41E),
-                                  size: 22,
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  }).toList(),
               ],
             ),
-          );
-        },
+            alignment: Alignment.center,
+            child: const Text(
+              'ALBA',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ),
       ),
     );
-  }
-
-  String _getNomeTag(String tag) {
-    return tag.toLowerCase() == 'negocio' ? 'Negócio' : 'Faculdade';
-  }
-
-  Color _getCorTag(String tag) {
-    if (tag.toLowerCase() == 'negocio') {
-      return Color(0xFF10B981);
-    } else {
-      return Color(0xFF3B82F6);
-    }
   }
 }
 
@@ -372,18 +204,18 @@ class _ProximamentScreen extends StatelessWidget {
             color: context.colors.textPrimaryColor,
           ),
           const SizedBox(height: 16),
-          Text(
+          const Text(
             'Em breve',
             style: TextStyle(
-              color: context.colors.whiteColor,
+              color: Color(0xFF333333),
               fontSize: 20,
               fontWeight: FontWeight.bold,
             ),
           ),
           const SizedBox(height: 8),
-          Text(
+          const Text(
             'Esta funcionalidade em breve estará disponível',
-            style: TextStyle(color: context.colors.textPrimaryColor),
+            style: TextStyle(color: Color(0xFF888888)),
           ),
         ],
       ),

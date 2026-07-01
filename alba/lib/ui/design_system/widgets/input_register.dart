@@ -1,5 +1,6 @@
 import 'package:alba/ui/design_system/constants/spaces.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 class InputRegister extends StatefulWidget {
   InputRegister({
@@ -12,6 +13,9 @@ class InputRegister extends StatefulWidget {
     this.validator,
     this.onChanged,
     this.isPassword = false,
+    this.inputFormatters,
+    this.keyboardType,
+    this.prefix,
   });
   final String title;
   final String labelText;
@@ -21,6 +25,9 @@ class InputRegister extends StatefulWidget {
   final TextEditingController controller;
   final String? Function(String?)? validator;
   final bool isPassword;
+  final List<TextInputFormatter>? inputFormatters;
+  final TextInputType? keyboardType;
+  final Widget? prefix;
 
   //TODO: Organizar melhor esses estados
 
@@ -44,11 +51,14 @@ class _InputRegisterState extends State<InputRegister> {
           ),
         ),
         TextFormField(
+          keyboardType: widget.keyboardType,
           validator: widget.validator,
           onChanged: widget.onChanged,
           controller: widget.controller,
           obscureText: widget.obscureText,
+          inputFormatters: widget.inputFormatters,
           decoration: InputDecoration(
+            prefix: widget.prefix,
             suffixIcon: widget.isPassword
                 ? IconButton(
                     icon: widget.obscureText
